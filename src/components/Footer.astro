@@ -1,0 +1,25 @@
+---
+const year = new Date().getFullYear();
+const socialLinks = [
+  { href: 'https://github.com/USERNAME', label: 'GitHub' },
+];
+---
+<footer class="border-t border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-primary) dark:bg-(--color-dark-bg-primary)">
+  <div class="max-w-5xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+    <p class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)">
+      &copy; {year} Blog. All rights reserved.
+    </p>
+    <div class="flex items-center gap-6">
+      {socialLinks.map(link => (
+        <a
+          href={link.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors"
+        >
+          {link.label}
+        </a>
+      ))}
+    </div>
+  </div>
+</footer>

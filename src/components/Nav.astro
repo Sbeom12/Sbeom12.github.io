@@ -1,0 +1,75 @@
+---
+import ThemeToggle from './ThemeToggle.astro';
+
+const navLinks = [
+  { href: '/blog', label: 'Blog' },
+  { href: '/series', label: 'Series' },
+  { href: '/about', label: 'About' },
+];
+
+const currentPath = Astro.url.pathname;
+---
+<nav class="sticky top-0 z-50 border-b border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-primary)/80 dark:bg-(--color-dark-bg-primary)/80 backdrop-blur-md">
+  <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <a href="/" class="text-xl font-bold text-(--color-text-primary) dark:text-(--color-dark-text-primary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+      Blog
+    </a>
+
+    <!-- Desktop -->
+    <div class="hidden md:flex items-center gap-8">
+      {navLinks.map(link => (
+        <a
+          href={link.href}
+          class:list={[
+            'text-sm font-medium transition-colors',
+            currentPath.startsWith(link.href)
+              ? 'text-(--color-accent) dark:text-(--color-dark-accent)'
+              : 'text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-text-primary) dark:hover:text-(--color-dark-text-primary)',
+          ]}
+        >
+          {link.label}
+        </a>
+      ))}
+      <ThemeToggle />
+    </div>
+
+    <!-- Mobile hamburger -->
+    <div class="flex items-center gap-4 md:hidden">
+      <ThemeToggle />
+      <button id="mobile-menu-btn" type="button" aria-label="Open menu" class="p-2">
+        <svg class="w-6 h-6 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile menu -->
+  <div id="mobile-menu" class="hidden md:hidden border-t border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-primary) dark:bg-(--color-dark-bg-primary)">
+    <div class="px-6 py-4 flex flex-col gap-4">
+      {navLinks.map(link => (
+        <a
+          href={link.href}
+          class:list={[
+            'text-sm font-medium transition-colors',
+            currentPath.startsWith(link.href)
+              ? 'text-(--color-accent) dark:text-(--color-dark-accent)'
+              : 'text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)',
+          ]}
+        >
+          {link.label}
+        </a>
+      ))}
+    </div>
+  </div>
+</nav>
+
+<script>
+  function initMobileMenu() {
+    const btn = document.getElementById('mobile-menu-btn');
+    const menu = document.getElementById('mobile-menu');
+    btn?.addEventListener('click', () => menu?.classList.toggle('hidden'));
+  }
+  initMobileMenu();
+  document.addEventListener('astro:after-swap', initMobileMenu);
+</script>
