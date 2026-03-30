@@ -1,8 +1,44 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import PostCard from '../components/PostCard.astro';
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const recentPosts = posts.slice(0, 4);
 ---
 <BaseLayout title="Blog">
-  <div class="max-w-5xl mx-auto px-6 py-20">
-    <h1 class="text-4xl font-bold">Coming Soon</h1>
-  </div>
+  <Hero />
+
+  <section class="max-w-3xl mx-auto px-6 pb-20">
+    <div class="flex items-center justify-between mb-8">
+      <h2 class="text-2xl font-bold">최신 글</h2>
+      <a
+        href="/blog"
+        class="text-sm text-(--color-accent) dark:text-(--color-dark-accent) hover:underline"
+      >
+        전체 보기 &rarr;
+      </a>
+    </div>
+
+    <div class="space-y-2">
+      {recentPosts.map(post => (
+        <PostCard
+          title={post.data.title}
+          description={post.data.description}
+          date={post.data.date}
+          tags={post.data.tags}
+          slug={post.id}
+        />
+      ))}
+    </div>
+
+    {recentPosts.length === 0 && (
+      <p class="text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) text-center py-12">
+        아직 작성된 글이 없습니다.
+      </p>
+    )}
+  </section>
 </BaseLayout>
