@@ -1,0 +1,45 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import TagFilter from '../../components/TagFilter.astro';
+import SearchBox from '../../components/SearchBox.astro';
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const allTags = [...new Set(posts.flatMap(post => post.data.tags))].sort();
+---
+<BaseLayout title="Blog" description="기술 블로그 글 목록">
+  <div class="max-w-3xl mx-auto px-6 py-16">
+    <h1 class="text-3xl font-bold mb-8">Blog</h1>
+
+    <div class="mb-6">
+      <SearchBox />
+    </div>
+
+    <div class="mb-8">
+      <TagFilter tags={allTags} />
+    </div>
+
+    <div class="space-y-2">
+      {posts.map(post => (
+        <div data-title={post.data.title} data-tags={post.data.tags.join(',')}>
+          <PostCard
+            title={post.data.title}
+            description={post.data.description}
+            date={post.data.date}
+            tags={post.data.tags}
+            slug={post.id}
+          />
+        </div>
+      ))}
+    </div>
+
+    {posts.length === 0 && (
+      <p class="text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) text-center py-12">
+        아직 작성된 글이 없습니다.
+      </p>
+    )}
+  </div>
+</BaseLayout>

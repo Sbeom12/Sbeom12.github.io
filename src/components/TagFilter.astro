@@ -1,0 +1,61 @@
+---
+interface Props {
+  tags: string[];
+}
+
+const { tags } = Astro.props;
+---
+<div id="tag-filter" class="flex flex-wrap gap-2">
+  <button
+    data-tag="all"
+    class="tag-btn active text-sm px-3 py-1.5 rounded-full border border-(--color-border) dark:border-(--color-dark-border) hover:border-(--color-accent) dark:hover:border-(--color-dark-accent) transition-colors"
+  >
+    All
+  </button>
+  {tags.map(tag => (
+    <button
+      data-tag={tag}
+      class="tag-btn text-sm px-3 py-1.5 rounded-full border border-(--color-border) dark:border-(--color-dark-border) hover:border-(--color-accent) dark:hover:border-(--color-dark-accent) transition-colors"
+    >
+      {tag}
+    </button>
+  ))}
+</div>
+
+<style>
+  .tag-btn.active {
+    background: var(--color-accent);
+    color: white;
+    border-color: var(--color-accent);
+  }
+  :global(.dark) .tag-btn.active {
+    background: var(--color-dark-accent);
+    border-color: var(--color-dark-accent);
+  }
+</style>
+
+<script>
+  function initTagFilter() {
+    const buttons = document.querySelectorAll('.tag-btn');
+    const posts = document.querySelectorAll('[data-tags]');
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const tag = (btn as HTMLElement).dataset.tag;
+        posts.forEach(post => {
+          const postTags = (post as HTMLElement).dataset.tags || '';
+          if (tag === 'all' || postTags.includes(tag!)) {
+            (post as HTMLElement).style.display = '';
+          } else {
+            (post as HTMLElement).style.display = 'none';
+          }
+        });
+      });
+    });
+  }
+  initTagFilter();
+  document.addEventListener('astro:after-swap', initTagFilter);
+</script>
