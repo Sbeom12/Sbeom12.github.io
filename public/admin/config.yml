@@ -1,6 +1,6 @@
 backend:
   name: github
-  repo: USERNAME/REPO_NAME
+  repo: Sbeom12/Sbeom12.github.io
   branch: main
 
 media_folder: public/images/uploads

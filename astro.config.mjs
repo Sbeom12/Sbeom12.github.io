@@ -4,7 +4,7 @@ import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  site: 'https://USERNAME.github.io',
+  site: 'https://sbeom12.github.io',
   output: 'static',
   integrations: [sitemap()],
   vite: {
