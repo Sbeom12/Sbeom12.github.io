@@ -1,0 +1,49 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const posts = await getCollection('blog', ({ data }) => !data.draft && data.series);
+
+const seriesMap = new Map<string, { count: number; latestDate: Date }>();
+for (const post of posts) {
+  const name = post.data.series!;
+  const existing = seriesMap.get(name);
+  if (!existing || post.data.date > existing.latestDate) {
+    seriesMap.set(name, {
+      count: (existing?.count || 0) + 1,
+      latestDate: post.data.date,
+    });
+  } else {
+    existing.count++;
+  }
+}
+
+const seriesList = [...seriesMap.entries()]
+  .map(([name, info]) => ({ name, ...info }))
+  .sort((a, b) => b.latestDate.valueOf() - a.latestDate.valueOf());
+---
+<BaseLayout title="Series" description="시리즈 목록">
+  <div class="max-w-3xl mx-auto px-6 py-16">
+    <h1 class="text-3xl font-bold mb-8">Series</h1>
+
+    <div class="space-y-4">
+      {seriesList.map(series => (
+        <a
+          href={`/series/${series.name}`}
+          class="block p-6 rounded-2xl border border-(--color-border) dark:border-(--color-dark-border) hover:border-(--color-accent) dark:hover:border-(--color-dark-accent) transition-colors"
+        >
+          <h2 class="text-lg font-semibold">{series.name}</h2>
+          <p class="mt-1 text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)">
+            {series.count}개의 글 &middot; 최근 업데이트 {series.latestDate.toLocaleDateString('ko-KR')}
+          </p>
+        </a>
+      ))}
+    </div>
+
+    {seriesList.length === 0 && (
+      <p class="text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) text-center py-12">
+        아직 시리즈가 없습니다.
+      </p>
+    )}
+  </div>
+</BaseLayout>
