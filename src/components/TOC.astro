@@ -1,0 +1,30 @@
+---
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+}
+
+const { headings } = Astro.props;
+const filteredHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
+---
+{filteredHeadings.length > 0 && (
+  <aside class="hidden xl:block sticky top-24 ml-8 w-64 shrink-0">
+    <p class="text-sm font-semibold mb-3 text-(--color-text-primary) dark:text-(--color-dark-text-primary)">
+      목차
+    </p>
+    <nav class="space-y-1.5">
+      {filteredHeadings.map(heading => (
+        <a
+          href={`#${heading.slug}`}
+          class:list={[
+            'block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors',
+            heading.depth === 3 && 'pl-4',
+          ]}
+        >
+          {heading.text}
+        </a>
+      ))}
+    </nav>
+  </aside>
+)}

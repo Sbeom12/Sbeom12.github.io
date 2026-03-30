@@ -1,0 +1,63 @@
+---
+import { getCollection, render } from 'astro:content';
+import BlogPost from '../../layouts/BlogPost.astro';
+import PostNav from '../../components/PostNav.astro';
+import SeriesNav from '../../components/SeriesNav.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  return posts.map(post => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+
+// Reading time estimate (Korean: ~500 chars/min)
+const wordCount = post.body?.length || 0;
+const readingTime = Math.max(1, Math.ceil(wordCount / 500));
+
+// Prev/Next posts
+const allPosts = (await getCollection('blog', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const currentIndex = allPosts.findIndex(p => p.id === post.id);
+const prev = currentIndex < allPosts.length - 1
+  ? { title: allPosts[currentIndex + 1].data.title, slug: allPosts[currentIndex + 1].id }
+  : undefined;
+const next = currentIndex > 0
+  ? { title: allPosts[currentIndex - 1].data.title, slug: allPosts[currentIndex - 1].id }
+  : undefined;
+
+// Series posts
+let seriesPosts: { title: string; slug: string; order: number }[] = [];
+if (post.data.series) {
+  const allSeriesPosts = allPosts.filter(p => p.data.series === post.data.series);
+  seriesPosts = allSeriesPosts.map(p => ({
+    title: p.data.title,
+    slug: p.id,
+    order: p.data.seriesOrder || 0,
+  }));
+}
+---
+<BlogPost
+  title={post.data.title}
+  description={post.data.description}
+  date={post.data.date}
+  tags={post.data.tags}
+  headings={headings}
+  readingTime={readingTime}
+  ogImage={post.data.thumbnail}
+>
+  {post.data.series && seriesPosts.length > 0 && (
+    <SeriesNav
+      seriesName={post.data.series}
+      posts={seriesPosts}
+      currentSlug={post.id}
+    />
+  )}
+
+  <Content />
+
+  <Fragment slot="post-footer">
+    <PostNav prev={prev} next={next} />
+  </Fragment>
+</BlogPost>

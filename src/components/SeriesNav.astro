@@ -1,0 +1,39 @@
+---
+interface SeriesPost {
+  title: string;
+  slug: string;
+  order: number;
+}
+
+interface Props {
+  seriesName: string;
+  posts: SeriesPost[];
+  currentSlug: string;
+}
+
+const { seriesName, posts, currentSlug } = Astro.props;
+const sorted = posts.sort((a, b) => a.order - b.order);
+---
+<div class="my-8 p-6 rounded-xl border border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary)">
+  <p class="text-sm font-semibold text-(--color-accent) dark:text-(--color-dark-accent) mb-3">
+    Series: {seriesName}
+  </p>
+  <ol class="space-y-1.5">
+    {sorted.map((post, i) => (
+      <li class="flex items-start gap-2">
+        <span class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) shrink-0">
+          {i + 1}.
+        </span>
+        {post.slug === currentSlug ? (
+          <span class="text-sm font-medium text-(--color-text-primary) dark:text-(--color-dark-text-primary)">
+            {post.title}
+          </span>
+        ) : (
+          <a href={`/blog/${post.slug}`} class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+            {post.title}
+          </a>
+        )}
+      </li>
+    ))}
+  </ol>
+</div>
