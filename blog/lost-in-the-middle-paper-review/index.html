@@ -44,17 +44,8 @@ Blog
 <li>관련 정보가 입력의 <strong>중간</strong>에 위치할 때 성능이 급격히 하락</li>
 <li>심지어 관련 문서가 <strong>아예 없는 경우보다도</strong> 중간에 있을 때 성능이 낮은 경우도 있음</li>
 </ul>
-<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>성능</span></span>
-<span class="line"><span>  ↑</span></span>
-<span class="line"><span>  │  ★                              ★</span></span>
-<span class="line"><span>  │    ╲                          ╱</span></span>
-<span class="line"><span>  │      ╲                      ╱</span></span>
-<span class="line"><span>  │        ╲                  ╱</span></span>
-<span class="line"><span>  │          ╲    ________  ╱</span></span>
-<span class="line"><span>  │            ╲╱</span></span>
-<span class="line"><span>  │</span></span>
-<span class="line"><span>  └──────────────────────────────→ 관련 정보의 위치</span></span>
-<span class="line"><span>     처음      중간      끝</span></span></code></pre>
+<p><img src="/images/posts/lost-in-the-middle-results.png" alt="U자형 성능 곡선 - 정답 문서의 위치에 따른 정확도 변화"></p>
+<p>GPT-3.5-Turbo 기준, 정답 문서가 1번째나 20번째에 위치할 때 정확도가 가장 높고, 중간(10번째 전후)에 위치할 때 급격히 하락하는 U자형 곡선을 보입니다. 빨간 점선은 관련 문서가 아예 없는 closed-book 성능인데, 중간 위치의 성능이 이보다도 낮은 경우가 있다는 점이 충격적입니다.</p>
 <p>이 현상을 저자들은 **“Lost in the Middle”**이라고 명명했습니다.</p>
 <hr>
 <h2 id="실험-설계">실험 설계</h2>
@@ -220,8 +211,12 @@ Blog
 </ol>
 <h3 id="한계점">한계점</h3>
 <ul>
-<li>논문이 2023년 기준이므로, 최신 모델(GPT-4o, Claude 3.5 등)에서는 개선되었을 가능성</li>
+<li>논문이 2023년 기준이므로, 최신 모델(GPT-4o, Claude 3.5 이상의 모델)에서는 개선되었을 가능성]
+<ul>
+<li>관련하여 특히, 요즘 모델에서는 Context length 매우 길어져서 이제는 이 실험만큼의 효율이 나오기 어렵다고 생각합니다.</li>
 <li>위치 인코딩 기법의 발전(RoPE 개선, YaRN 등)으로 완화될 수 있음</li>
+</ul>
+</li>
 <li>하지만 근본적인 Attention 메커니즘의 한계는 여전히 존재</li>
 </ul>
 <hr>
