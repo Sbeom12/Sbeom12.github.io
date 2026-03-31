@@ -1,0 +1,369 @@
+<!DOCTYPE html><html lang="ko" class="dark"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="google-site-verification" content="rIn3fOE7cFCrJFnwHSepci620PG65JKXRTlJpGBqk_4"><meta name="generator" content="Astro v6.1.1"><title>[논문 리뷰] Deep Residual Learning for Image Recognition (ResNet)</title><meta name="description" content="ILSVRC 2015 우승 모델 ResNet의 핵심 아이디어인 Residual Learning을 분석하고, Bottleneck, ResNeXt까지 확장하여 정리합니다. PyTorch 구현 코드 포함."><link rel="canonical" href="https://sbeom12.github.io/blog/resnet-paper-review/"><!-- Open Graph --><meta property="og:type" content="website"><meta property="og:url" content="https://sbeom12.github.io/blog/resnet-paper-review/"><meta property="og:title" content="[논문 리뷰] Deep Residual Learning for Image Recognition (ResNet)"><meta property="og:description" content="ILSVRC 2015 우승 모델 ResNet의 핵심 아이디어인 Residual Learning을 분석하고, Bottleneck, ResNeXt까지 확장하여 정리합니다. PyTorch 구현 코드 포함."><meta property="og:image" content="https://sbeom12.github.io/images/posts/resnet/thumbnail.png"><!-- Twitter --><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="[논문 리뷰] Deep Residual Learning for Image Recognition (ResNet)"><meta name="twitter:description" content="ILSVRC 2015 우승 모델 ResNet의 핵심 아이디어인 Residual Learning을 분석하고, Bottleneck, ResNeXt까지 확장하여 정리합니다. PyTorch 구현 코드 포함."><meta name="twitter:image" content="https://sbeom12.github.io/images/posts/resnet/thumbnail.png"><meta http-equiv="X-Content-Type-Options" content="nosniff"><meta http-equiv="X-Frame-Options" content="DENY"><meta name="referrer" content="strict-origin-when-cross-origin"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="sitemap" href="/sitemap-index.xml"><link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml"><!-- Prevent flash of wrong theme --><script>
+    (function() {
+      const theme = localStorage.getItem('theme') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+    })();
+  </script><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.j56hQv-j.js"></script><script>
+    function addCopyButtons() {
+      document.querySelectorAll('.prose-blog pre').forEach(function(pre) {
+        if (pre.querySelector('.code-copy-btn')) return;
+        var btn = document.createElement('button');
+        btn.className = 'code-copy-btn';
+        btn.textContent = 'Copy';
+        btn.addEventListener('click', function() {
+          var code = pre.querySelector('code');
+          if (code) {
+            navigator.clipboard.writeText(code.textContent || '');
+            btn.textContent = 'Copied!';
+            setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+          }
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(btn);
+      });
+    }
+    document.addEventListener('DOMContentLoaded', addCopyButtons);
+    document.addEventListener('astro:after-swap', addCopyButtons);
+  </script><style>.toc-link[data-astro-cid-obewoz47].active{color:var(--color-accent);font-weight:600}.dark .toc-link[data-astro-cid-obewoz47].active{color:var(--color-dark-accent)}
+</style>
+<link rel="stylesheet" href="/_astro/BaseLayout.vZQDa7m7.css"></head> <body class="min-h-screen flex flex-col bg-(--color-bg-primary) dark:bg-(--color-dark-bg-primary) text-(--color-text-primary) dark:text-(--color-dark-text-primary) transition-colors"> <nav class="sticky top-0 z-50 border-b border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-primary)/80 dark:bg-(--color-dark-bg-primary)/80 backdrop-blur-md"> <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between"> <a href="/" class="text-xl font-bold text-(--color-text-primary) dark:text-(--color-dark-text-primary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+Blog
+</a> <!-- Desktop --> <div class="hidden md:flex items-center gap-8"> <a href="/blog" aria-current="page" class="text-sm font-medium transition-colors text-(--color-accent) dark:text-(--color-dark-accent)"> Blog </a><a href="/series" class="text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-text-primary) dark:hover:text-(--color-dark-text-primary)"> Series </a><a href="/about" class="text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-text-primary) dark:hover:text-(--color-dark-text-primary)"> About </a> <button type="button" aria-label="Toggle dark mode" class="theme-toggle p-2 rounded-lg hover:bg-(--color-border) dark:hover:bg-(--color-dark-border) transition-colors"> <svg class="icon-sun hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <circle cx="12" cy="12" r="5"></circle> <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path> </svg> <svg class="icon-moon hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path> </svg> </button> <script type="module">function n(){const c=document.querySelectorAll(".theme-toggle");function r(){const e=localStorage.getItem("theme");return e||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}function o(e){document.documentElement.classList.toggle("dark",e==="dark"),document.querySelectorAll(".icon-sun").forEach(t=>t.classList.toggle("hidden",e==="dark")),document.querySelectorAll(".icon-moon").forEach(t=>t.classList.toggle("hidden",e!=="dark"))}o(r()),c.forEach(e=>{e.addEventListener("click",()=>{const t=document.documentElement.classList.contains("dark")?"light":"dark";localStorage.setItem("theme",t),o(t)})})}n();document.addEventListener("astro:after-swap",n);</script> </div> <!-- Mobile hamburger --> <div class="flex items-center gap-4 md:hidden"> <button type="button" aria-label="Toggle dark mode" class="theme-toggle p-2 rounded-lg hover:bg-(--color-border) dark:hover:bg-(--color-dark-border) transition-colors"> <svg class="icon-sun hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <circle cx="12" cy="12" r="5"></circle> <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path> </svg> <svg class="icon-moon hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path> </svg> </button>  <button id="mobile-menu-btn" type="button" aria-label="Open menu" class="p-2"> <svg class="w-6 h-6 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M4 6h16M4 12h16M4 18h16"></path> </svg> </button> </div> </div> <!-- Mobile menu --> <div id="mobile-menu" class="hidden md:hidden border-t border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-primary) dark:bg-(--color-dark-bg-primary)"> <div class="px-6 py-4 flex flex-col gap-4"> <a href="/blog" aria-current="page" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-accent) dark:text-(--color-dark-accent)"> Blog </a><a href="/series" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)"> Series </a><a href="/about" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)"> About </a> </div> </div> </nav> <script type="module">function n(){const t=document.getElementById("mobile-menu-btn"),e=document.getElementById("mobile-menu");t?.addEventListener("click",()=>e?.classList.toggle("hidden")),document.querySelectorAll(".mobile-nav-link").forEach(d=>{d.addEventListener("click",()=>e?.classList.add("hidden"))})}n();document.addEventListener("astro:after-swap",n);</script> <main class="flex-1">  <div class="max-w-3xl xl:max-w-5xl mx-auto px-6 py-16"> <!-- Header --> <header class="max-w-3xl mb-8"> <div class="flex items-center gap-3 text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) mb-4"> <time class="tabular-nums">2024년 1월 15일</time> <span class="w-1 h-1 rounded-full bg-(--color-border) dark:bg-(--color-dark-border)"></span> <span>19분 읽기</span> </div> <h1 class="text-3xl md:text-4xl font-bold leading-tight">[논문 리뷰] Deep Residual Learning for Image Recognition (ResNet)</h1> <p class="mt-3 text-lg text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) leading-relaxed"> ILSVRC 2015 우승 모델 ResNet의 핵심 아이디어인 Residual Learning을 분석하고, Bottleneck, ResNeXt까지 확장하여 정리합니다. PyTorch 구현 코드 포함. </p> <div class="mt-4 flex flex-wrap gap-1.5"> <a href="/blog?tag=AI" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> AI </a><a href="/blog?tag=Vision" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> Vision </a><a href="/blog?tag=논문리뷰" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> 논문리뷰 </a><a href="/blog?tag=ResNet" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> ResNet </a><a href="/blog?tag=Deep Learning" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> Deep Learning </a> </div> </header> <hr class="border-(--color-border) dark:border-(--color-dark-border) mb-10"> <!-- Content + TOC --> <div class="flex"> <article class="min-w-0 flex-1 max-w-3xl"> <div class="prose prose-lg prose-blog max-w-none"> <div class="my-8 p-6 rounded-xl border border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary)"> <p class="text-sm font-semibold text-(--color-accent) dark:text-(--color-dark-accent) mb-3">
+Series: Vision Model </p> <ol class="space-y-1.5"> <li class="flex items-start gap-2"> <span class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) shrink-0"> 1.
+</span> <span class="text-sm font-medium text-(--color-text-primary) dark:text-(--color-dark-text-primary)"> [논문 리뷰] Deep Residual Learning for Image Recognition (ResNet) </span> </li> </ol> </div><h2 id="개요">개요</h2>
+<blockquote>
+<p>Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun (Microsoft Research, 2015)
+<a href="https://arxiv.org/pdf/1512.03385.pdf">논문 링크</a></p>
+</blockquote>
+<p>ResNet은 <strong>ILSVRC 2015 우승</strong> 모델로, VGG보다 8배 깊은 152층 네트워크임에도 3.57%라는 놀라운 오류율을 달성했습니다. 핵심 아이디어는 단순하지만 강력합니다: <strong>Residual Learning</strong>.</p>
+<hr>
+<h2 id="introduction-깊어질수록-좋아지는가">Introduction: 깊어질수록 좋아지는가?</h2>
+<p>이전 연구들(“Going deeper with convolutions”, “VGGNet”)은 네트워크가 깊을수록 성능이 좋아진다고 가정했습니다. 하지만 실제로는 <strong>Gradient Vanishing/Exploding</strong> 문제가 발생합니다.</p>
+<ul>
+<li><strong>Vanishing</strong>: 역전파 시 gradient가 점점 작아져 앞쪽 레이어가 학습되지 않음</li>
+<li><strong>Exploding</strong>: 가중치의 반복 곱셈으로 gradient가 발산</li>
+</ul>
+<p><img src="/images/posts/resnet/degradation.png" alt="Layer degradation - 깊은 네트워크가 오히려 성능이 떨어지는 현상"></p>
+<p>위 그래프에서 56층 네트워크가 20층보다 <strong>학습 오류와 테스트 오류 모두</strong> 높은 것을 확인할 수 있습니다. 이는 오버피팅이 아닌 <strong>최적화 문제</strong>입니다.</p>
+<hr>
+<h2 id="residual-learning-framework">Residual Learning Framework</h2>
+<p><img src="/images/posts/resnet/residual-block.png" alt="Residual Block의 구조"></p>
+<h3 id="핵심-아이디어">핵심 아이디어</h3>
+<p>기존 네트워크가 목표 함수 <code>H(x)</code>를 직접 학습하는 대신, <strong>잔차(residual)</strong> <code>F(x) = H(x) - x</code>를 학습합니다.</p>
+<p>$$H(x) = F(x) + x$$</p>
+<p><strong>왜 이것이 효과적인가?</strong></p>
+<ul>
+<li><strong>Pre-conditioning</strong>: 최적 상태에서 <code>F(x) ≈ 0</code>이 되면 항등 함수에 수렴</li>
+<li><strong>민감도 향상</strong>: 입력의 미세한 변화를 감지 가능</li>
+<li><strong>최적화 용이</strong>: 깊은 네트워크도 학습 가능</li>
+<li><strong>성능 보장</strong>: 레이어를 추가해도 성능이 하락하지 않음</li>
+</ul>
+<hr>
+<h2 id="identity-mapping-by-shortcuts">Identity Mapping by Shortcuts</h2>
+<h3 id="identity-shortcut-차원이-같을-때">Identity Shortcut (차원이 같을 때)</h3>
+<p>$$y = F(x, {W_i}) + x$$</p>
+<ul>
+<li>첫 번째 항: 학습되는 residual mapping</li>
+<li><code>F + x</code>: element-wise 덧셈 (shortcut connection)</li>
+<li>단순화하면: $F = W_2 \sigma(W_1 x)$ (σ는 ReLU)</li>
+</ul>
+<h3 id="projection-shortcut-차원이-다를-때">Projection Shortcut (차원이 다를 때)</h3>
+<p>$$y = F(x, {W_i}) + W_s x$$</p>
+<ul>
+<li><code>Ws</code>: 1×1 Convolution으로 차원을 맞춰주는 행렬</li>
+<li>역전파 시에도 <code>Ws</code> 파라미터를 통해 gradient가 전달되므로 vanishing 방지</li>
+</ul>
+<hr>
+<h2 id="아키텍처-비교">아키텍처 비교</h2>
+<p><img src="/images/posts/resnet/architecture.jpg" alt="VGG, Plain Network, Residual Network 아키텍처 비교"></p>
+<h3 id="vgg19">VGG19</h3>
+<ul>
+<li>13 Convolution + 3 Fully-connected 레이어</li>
+<li>3×3 conv 필터, stride 1, padding 1</li>
+<li>2×2 max pooling (stride 2)</li>
+<li>ReLU 활성화 함수</li>
+</ul>
+<h3 id="plain-network">Plain Network</h3>
+<p>VGG를 기반으로 설계 규칙을 적용:</p>
+<ol>
+<li>같은 크기의 feature map에는 같은 수의 필터 사용</li>
+<li>Feature map 크기가 절반이 되면 필터 수를 2배로</li>
+</ol>
+<ul>
+<li>Pooling 대신 stride 2 convolution으로 다운샘플링</li>
+<li>마지막에 Global Average Pooling 적용</li>
+<li>34층이지만 VGG19보다 연산량이 적음</li>
+</ul>
+<h3 id="residual-network">Residual Network</h3>
+<p>Plain Network에 shortcut connection을 추가한 구조.</p>
+<p><strong>차원 맞춤 전략 3가지:</strong></p>
+<ol>
+<li><strong>Zero-padding</strong>: 추가 파라미터 없이 padding으로 차원 맞춤</li>
+<li><strong>선택적 1×1 Conv</strong>: 크기가 변하는 shortcut에만 적용</li>
+<li><strong>전체 1×1 Conv</strong>: 모든 shortcut에 convolution 적용</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>메트릭</th><th>VGG19</th><th>Plain-34</th><th>ResNet-34</th></tr></thead><tbody><tr><td>레이어</td><td>19</td><td>34</td><td>34</td></tr><tr><td>FLOPs</td><td>19.6B</td><td>3.6B</td><td>3.6B</td></tr></tbody></table>
+<hr>
+<h2 id="실험-결과">실험 결과</h2>
+<p><img src="/images/posts/resnet/results1.jpg" alt="Plain Network vs Residual Network 학습 결과"></p>
+<p><strong>핵심 발견:</strong></p>
+<ul>
+<li>Plain-18이 Plain-34보다 성능이 좋음 → <strong>degradation 발생</strong></li>
+<li>ResNet-34가 ResNet-18보다 성능이 좋음 → <strong>Residual Learning으로 해결</strong></li>
+<li>Residual Network의 수렴 속도가 Plain Network보다 빠름</li>
+</ul>
+<hr>
+<h2 id="bottleneck-architecture">Bottleneck Architecture</h2>
+<p><img src="/images/posts/resnet/results2.jpg" alt="Bottleneck 구조 비교"></p>
+<p>더 깊은 네트워크(50/101/152층)를 위해 <strong>차원 축소-확장</strong> 구조를 도입:</p>
+<ul>
+<li>1×1 conv로 차원 축소 → 3×3 conv → 1×1 conv로 차원 확장</li>
+<li>연산 시간 단축 + 파라미터 22% 감소</li>
+</ul>
+<p><strong>파라미터 비교:</strong></p>
+<ul>
+<li>Standard: 3×3×64×2 = <strong>1,152</strong></li>
+<li>Bottleneck: 1×1×64 + 3×3×64 + 1×1×256 = <strong>896</strong></li>
+</ul>
+<p><img src="/images/posts/resnet/results3.jpg" alt="ImageNet 결과 - 깊이별 성능"></p>
+<p>최종적으로 6개 모델 앙상블로 <strong>3.57% 오류율</strong>을 달성했습니다.</p>
+<hr>
+<h2 id="cifar-10-실험">CIFAR-10 실험</h2>
+<p>32×32 이미지에 맞게 첫 번째 7×7 conv를 3×3으로 조정하여 실험을 진행했습니다.</p>
+<p><img src="/images/posts/resnet/results4.jpg" alt="CIFAR-10 결과"></p>
+<ul>
+<li>Plain Network는 일정 깊이 이상에서 성능이 정체</li>
+<li>ResNet은 깊이가 증가할수록 성능 향상 (실용적 한계 내에서)</li>
+<li>1202층 결과는 regularization 없이 오버피팅 발생</li>
+</ul>
+<h3 id="pre-activation-2016-후속-연구">Pre-activation (2016 후속 연구)</h3>
+<p><img src="/images/posts/resnet/preactivation.jpg" alt="Pre-activation ResNet"></p>
+<p>BN-ReLU-Conv 순서로 변경하여:</p>
+<ul>
+<li>일반화 성능 향상</li>
+<li>최적화 단순화</li>
+<li>1000층 이상에서도 효과적</li>
+</ul>
+<p><img src="/images/posts/resnet/preactivation-compare.jpg" alt="Pre-activation 비교"></p>
+<hr>
+<h2 id="추가-연구-resnet의-앙상블-행동">추가 연구: ResNet의 앙상블 행동</h2>
+<blockquote>
+<p><a href="https://arxiv.org/pdf/1605.06431.pdf">Residual Networks Behave Like Ensembles of Relatively Shallow Networks</a></p>
+</blockquote>
+<p><img src="/images/posts/resnet/ensemble.jpg" alt="ResNet의 앙상블 구조"></p>
+<h3 id="lesion-study">Lesion Study</h3>
+<p><img src="/images/posts/resnet/lesion.jpg" alt="Lesion Study 구조"></p>
+<p><img src="/images/posts/resnet/lesion-results.jpg" alt="Lesion Study 결과"></p>
+<p><strong>핵심 발견:</strong></p>
+<ul>
+<li>VGG는 레이어 하나를 제거하면 성능이 급격히 하락</li>
+<li>ResNet은 다운샘플링 지점을 제외하면 안정적으로 유지</li>
+<li>ResNet은 <strong>다수의 독립적인 경로</strong>(앙상블)로 동작</li>
+</ul>
+<h3 id="경로-분석">경로 분석</h3>
+<p><img src="/images/posts/resnet/path-length.jpg" alt="경로 길이 분포"></p>
+<ul>
+<li>95%+ 경로가 19~35개 모듈을 통과</li>
+<li>Gradient 업데이트는 주로 <strong>5~17 길이의 경로</strong>(~45%)에서 발생</li>
+<li>20개 이상의 모듈을 거치는 경로는 효과적인 학습이 어려움</li>
+</ul>
+<p><img src="/images/posts/resnet/path-length2.jpg" alt="경로별 gradient 기여도"></p>
+<p><strong>결론: ResNet은 “깊은 네트워크”가 아니라 “얕은 네트워크의 앙상블”로 동작합니다.</strong></p>
+<hr>
+<h2 id="bottleneck-효과-분석-inception과-xception">Bottleneck 효과 분석: Inception과 Xception</h2>
+<h3 id="11-convolution의-역할">1×1 Convolution의 역할</h3>
+<p>Google Inception에서 도입된 1×1 conv의 장점:</p>
+<ul>
+<li>채널 수 조정</li>
+<li>연산량 감소</li>
+<li>비선형성 추가</li>
+</ul>
+<p>단점: 채널 축소 시 <strong>정보 손실</strong> 발생</p>
+<h3 id="inception-vs-xception">Inception vs Xception</h3>
+<p><img src="/images/posts/resnet/inception.jpg" alt="Inception 구조"></p>
+<p><img src="/images/posts/resnet/xception.jpg" alt="Xception 구조"></p>
+<p><img src="/images/posts/resnet/inception-results.jpg" alt="Inception 결과"></p>
+<p><img src="/images/posts/resnet/inception-results2.jpg" alt="Xception 결과"></p>
+<p><strong>발견: 1×1 Convolution을 많이 쓴다고 반드시 성능이 좋아지는 것은 아닙니다.</strong></p>
+<blockquote>
+<p>참고: <a href="https://arxiv.org/pdf/1610.02357.pdf">Xception: Deep Learning with Depthwise Separable Convolutions</a></p>
+</blockquote>
+<hr>
+<h2 id="resnext-aggregated-residual-transformations">ResNeXt: Aggregated Residual Transformations</h2>
+<blockquote>
+<p><a href="https://arxiv.org/abs/1611.05431">논문 링크</a></p>
+</blockquote>
+<p><img src="/images/posts/resnet/resnext1.jpg" alt="ResNeXt 아키텍처"></p>
+<p>ResNeXt는 ResNet에 <strong>Cardinality</strong>(그룹 수) 개념을 도입합니다:</p>
+<ol>
+<li>256 채널 → 1×1 conv → 128 채널</li>
+<li>32개 그룹으로 분할 (각 4 채널)</li>
+<li>32개 그룹 출력 concat → 128 채널</li>
+<li>1×1 conv → 256 채널</li>
+</ol>
+<h3 id="cardinality-vs-width">Cardinality vs Width</h3>
+<p><img src="/images/posts/resnet/resnext2.jpg" alt="Cardinality와 Width 비교"></p>
+<p>32그룹 × 4채널 > 더 넓은 설정</p>
+<h3 id="스케일링-전략-비교">스케일링 전략 비교</h3>
+<p><img src="/images/posts/resnet/resnext3.jpg" alt="ResNeXt 성능 비교"></p>
+<p><strong>순위: ResNeXt-101 > ResNet-101 (wider) > ResNet-200</strong></p>
+<blockquote>
+<p><strong>핵심 결론: Cardinality 스케일링 > Width 스케일링 > Depth 스케일링</strong></p>
+</blockquote>
+<hr>
+<h2 id="pytorch-구현">PyTorch 구현</h2>
+<h3 id="residual-block">Residual Block</h3>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torch</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torch.nn </span><span style="color:#D73A49;--shiki-dark:#F97583">as</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">class</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> Residual_Block</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#6F42C1;--shiki-dark:#B392F0">nn</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.</span><span style="color:#6F42C1;--shiki-dark:#B392F0">Module</span><span style="color:#24292E;--shiki-dark:#E1E4E8">):</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    def</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> __init__</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(self, input, output, stride</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">):</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        super</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(Residual_Block, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">).</span><span style="color:#005CC5;--shiki-dark:#79B8FF">__init__</span><span style="color:#24292E;--shiki-dark:#E1E4E8">()</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.conv1 </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.Conv2d(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">input</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, output, </span><span style="color:#E36209;--shiki-dark:#FFAB70">kernel_size</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E36209;--shiki-dark:#FFAB70">                              stride</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8">stride, </span><span style="color:#E36209;--shiki-dark:#FFAB70">padding</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">bias</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">False</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.bn1 </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.BatchNorm2d(output)</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.relu </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.ReLU(</span><span style="color:#E36209;--shiki-dark:#FFAB70">inplace</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.conv2 </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.Conv2d(output, output, </span><span style="color:#E36209;--shiki-dark:#FFAB70">kernel_size</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E36209;--shiki-dark:#FFAB70">                              stride</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">padding</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">bias</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">False</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.bn2 </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.BatchNorm2d(output)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.shortcut </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.Sequential()</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">        if</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> stride </span><span style="color:#D73A49;--shiki-dark:#F97583">!=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> 1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">:</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">            self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.shortcut </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.Sequential(</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">                nn.Conv2d(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">input</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, output, </span><span style="color:#E36209;--shiki-dark:#FFAB70">kernel_size</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E36209;--shiki-dark:#FFAB70">                         stride</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8">stride, </span><span style="color:#E36209;--shiki-dark:#FFAB70">bias</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">False</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">                nn.BatchNorm2d(output)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            )</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    def</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> forward</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(self, x):</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.bn1(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.conv1(x))</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.relu(out)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.bn2(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.conv2(out))</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">+=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.shortcut(x)  </span><span style="color:#6A737D;--shiki-dark:#6A737D"># skip connection</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.relu(out)</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">        return</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> out</span></span></code></pre>
+<h3 id="resnet-모델">ResNet 모델</h3>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">class</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> ResNet</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#6F42C1;--shiki-dark:#B392F0">nn</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.</span><span style="color:#6F42C1;--shiki-dark:#B392F0">Module</span><span style="color:#24292E;--shiki-dark:#E1E4E8">):</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    def</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> __init__</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(self, block, num_blocks, num_classes</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">10</span><span style="color:#24292E;--shiki-dark:#E1E4E8">):</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        super</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(ResNet, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">).</span><span style="color:#005CC5;--shiki-dark:#79B8FF">__init__</span><span style="color:#24292E;--shiki-dark:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.in_planes </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> 64</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.conv1 </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.Conv2d(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.in_planes, </span><span style="color:#E36209;--shiki-dark:#FFAB70">kernel_size</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E36209;--shiki-dark:#FFAB70">                              stride</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">padding</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">bias</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">False</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.bn1 </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.BatchNorm2d(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">64</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.relu </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.ReLU(</span><span style="color:#E36209;--shiki-dark:#FFAB70">inplace</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.maxpool </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.MaxPool2d(</span><span style="color:#E36209;--shiki-dark:#FFAB70">kernel_size</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">stride</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">padding</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.layer1 </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">._make_layer(block, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">64</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, num_blocks[</span><span style="color:#005CC5;--shiki-dark:#79B8FF">0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">], </span><span style="color:#E36209;--shiki-dark:#FFAB70">stride</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.layer2 </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">._make_layer(block, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">128</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, num_blocks[</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">], </span><span style="color:#E36209;--shiki-dark:#FFAB70">stride</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.layer3 </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">._make_layer(block, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">256</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, num_blocks[</span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">], </span><span style="color:#E36209;--shiki-dark:#FFAB70">stride</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.layer4 </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">._make_layer(block, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">512</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, num_blocks[</span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">], </span><span style="color:#E36209;--shiki-dark:#FFAB70">stride</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.linear </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.Linear(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">512</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, num_classes)</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.avgpool </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.AdaptiveAvgPool2d((</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">))</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    def</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> _make_layer</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(self, block, planes, num_blocks, stride):</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        strides </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> [stride] </span><span style="color:#D73A49;--shiki-dark:#F97583">+</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> [</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">] </span><span style="color:#D73A49;--shiki-dark:#F97583">*</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> (num_blocks </span><span style="color:#D73A49;--shiki-dark:#F97583">-</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> 1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        layers </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> []</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">        for</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> stride </span><span style="color:#D73A49;--shiki-dark:#F97583">in</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> strides:</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            layers.append(block(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.in_planes, planes, stride))</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">            self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.in_planes </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> planes</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">        return</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.Sequential(</span><span style="color:#D73A49;--shiki-dark:#F97583">*</span><span style="color:#24292E;--shiki-dark:#E1E4E8">layers)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    def</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> forward</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(self, x):</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.bn1(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.conv1(x))</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.relu(out)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.maxpool(out)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.layer1(out)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.layer2(out)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.layer3(out)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.layer4(out)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.avgpool(out)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> out.view(out.size(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">), </span><span style="color:#D73A49;--shiki-dark:#F97583">-</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        out </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.linear(out)</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">        return</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> out</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">def</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> ResNet18</span><span style="color:#24292E;--shiki-dark:#E1E4E8">():</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    return</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> ResNet(Residual_Block, [</span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">])</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">def</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> ResNet34</span><span style="color:#24292E;--shiki-dark:#E1E4E8">():</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    return</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> ResNet(Residual_Block, [</span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">4</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">6</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">])</span></span></code></pre>
+<h3 id="학습-및-평가">학습 및 평가</h3>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torchvision</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torchvision.transforms </span><span style="color:#D73A49;--shiki-dark:#F97583">as</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> transforms</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torch.optim </span><span style="color:#D73A49;--shiki-dark:#F97583">as</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> optim</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torch.backends.cudnn </span><span style="color:#D73A49;--shiki-dark:#F97583">as</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> cudnn</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D"># 데이터 로드</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">transform </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> transforms.Compose([</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    transforms.ToTensor(),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    transforms.Normalize((</span><span style="color:#005CC5;--shiki-dark:#79B8FF">0.5</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">0.5</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">0.5</span><span style="color:#24292E;--shiki-dark:#E1E4E8">), (</span><span style="color:#005CC5;--shiki-dark:#79B8FF">0.5</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">0.5</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">0.5</span><span style="color:#24292E;--shiki-dark:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">])</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">train_dataset </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torchvision.datasets.CIFAR10(</span></span>
+<span class="line"><span style="color:#E36209;--shiki-dark:#FFAB70">    root</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">'./data'</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">train</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">download</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">transform</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8">transform)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">test_dataset </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torchvision.datasets.CIFAR10(</span></span>
+<span class="line"><span style="color:#E36209;--shiki-dark:#FFAB70">    root</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">'./data'</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">train</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">False</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">download</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">transform</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8">transform)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">train_loader </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torch.utils.data.DataLoader(</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    train_dataset, </span><span style="color:#E36209;--shiki-dark:#FFAB70">batch_size</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">64</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">shuffle</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">num_workers</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">4</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">test_loader </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torch.utils.data.DataLoader(</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    test_dataset, </span><span style="color:#E36209;--shiki-dark:#FFAB70">batch_size</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">50</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">shuffle</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">False</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">num_workers</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">4</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D"># 모델 설정</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">device </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> 'cuda'</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">model </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> ResNet18().to(device)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">model </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torch.nn.DataParallel(model)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">cudnn.benchmark </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> True</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">criterion </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.CrossEntropyLoss()</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">optimizer </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> optim.AdamW(model.parameters())</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D"># 학습 루프</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">for</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> epoch </span><span style="color:#D73A49;--shiki-dark:#F97583">in</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> range</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">20</span><span style="color:#24292E;--shiki-dark:#E1E4E8">):</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    model.train()</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    for</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> inputs, targets </span><span style="color:#D73A49;--shiki-dark:#F97583">in</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> train_loader:</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        inputs, targets </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> inputs.to(device), targets.to(device)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        optimizer.zero_grad()</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        loss </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> criterion(model(inputs), targets)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        loss.backward()</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        optimizer.step()</span></span></code></pre>
+<hr>
+<p><em>이 글은 <a href="https://arxiv.org/pdf/1512.03385.pdf">Deep Residual Learning for Image Recognition</a> 논문과 관련 연구들을 리뷰한 글입니다.</em></p>   </div>  <nav aria-label="Post navigation" class="mt-16 pt-8 border-t border-(--color-border) dark:border-(--color-dark-border) grid grid-cols-1 md:grid-cols-2 gap-4"><div></div><a href="/blog/lost-in-the-middle-paper-review" class="group p-5 rounded-xl border border-(--color-border) dark:border-(--color-dark-border) hover:border-(--color-accent) dark:hover:border-(--color-dark-accent) transition-all duration-200 text-right"><span class="text-xs font-medium text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) uppercase tracking-wide">다음 글 &rarr;</span><p class="mt-2 text-sm font-semibold group-hover:text-(--color-accent) dark:group-hover:text-(--color-dark-accent) transition-colors line-clamp-1">[논문 리뷰] Lost in the Middle: How Language Models Use Long Contexts</p></a></nav>  </article> <aside class="hidden xl:block sticky top-24 ml-8 w-64 shrink-0 pl-6 border-l border-(--color-border) dark:border-(--color-dark-border)" data-astro-cid-obewoz47><p class="text-sm font-semibold mb-3 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" data-astro-cid-obewoz47>
+목차
+</p><nav aria-label="Table of contents" class="space-y-1.5" data-astro-cid-obewoz47><a href="#개요" data-toc-link data-heading-id="개요" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>개요</a><a href="#introduction-깊어질수록-좋아지는가" data-toc-link data-heading-id="introduction-깊어질수록-좋아지는가" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>Introduction: 깊어질수록 좋아지는가?</a><a href="#residual-learning-framework" data-toc-link data-heading-id="residual-learning-framework" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>Residual Learning Framework</a><a href="#핵심-아이디어" data-toc-link data-heading-id="핵심-아이디어" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>핵심 아이디어</a><a href="#identity-mapping-by-shortcuts" data-toc-link data-heading-id="identity-mapping-by-shortcuts" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>Identity Mapping by Shortcuts</a><a href="#identity-shortcut-차원이-같을-때" data-toc-link data-heading-id="identity-shortcut-차원이-같을-때" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Identity Shortcut (차원이 같을 때)</a><a href="#projection-shortcut-차원이-다를-때" data-toc-link data-heading-id="projection-shortcut-차원이-다를-때" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Projection Shortcut (차원이 다를 때)</a><a href="#아키텍처-비교" data-toc-link data-heading-id="아키텍처-비교" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>아키텍처 비교</a><a href="#vgg19" data-toc-link data-heading-id="vgg19" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>VGG19</a><a href="#plain-network" data-toc-link data-heading-id="plain-network" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Plain Network</a><a href="#residual-network" data-toc-link data-heading-id="residual-network" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Residual Network</a><a href="#실험-결과" data-toc-link data-heading-id="실험-결과" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>실험 결과</a><a href="#bottleneck-architecture" data-toc-link data-heading-id="bottleneck-architecture" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>Bottleneck Architecture</a><a href="#cifar-10-실험" data-toc-link data-heading-id="cifar-10-실험" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>CIFAR-10 실험</a><a href="#pre-activation-2016-후속-연구" data-toc-link data-heading-id="pre-activation-2016-후속-연구" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Pre-activation (2016 후속 연구)</a><a href="#추가-연구-resnet의-앙상블-행동" data-toc-link data-heading-id="추가-연구-resnet의-앙상블-행동" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>추가 연구: ResNet의 앙상블 행동</a><a href="#lesion-study" data-toc-link data-heading-id="lesion-study" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Lesion Study</a><a href="#경로-분석" data-toc-link data-heading-id="경로-분석" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>경로 분석</a><a href="#bottleneck-효과-분석-inception과-xception" data-toc-link data-heading-id="bottleneck-효과-분석-inception과-xception" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>Bottleneck 효과 분석: Inception과 Xception</a><a href="#11-convolution의-역할" data-toc-link data-heading-id="11-convolution의-역할" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>1×1 Convolution의 역할</a><a href="#inception-vs-xception" data-toc-link data-heading-id="inception-vs-xception" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Inception vs Xception</a><a href="#resnext-aggregated-residual-transformations" data-toc-link data-heading-id="resnext-aggregated-residual-transformations" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>ResNeXt: Aggregated Residual Transformations</a><a href="#cardinality-vs-width" data-toc-link data-heading-id="cardinality-vs-width" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Cardinality vs Width</a><a href="#스케일링-전략-비교" data-toc-link data-heading-id="스케일링-전략-비교" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>스케일링 전략 비교</a><a href="#pytorch-구현" data-toc-link data-heading-id="pytorch-구현" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>PyTorch 구현</a><a href="#residual-block" data-toc-link data-heading-id="residual-block" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Residual Block</a><a href="#resnet-모델" data-toc-link data-heading-id="resnet-모델" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>ResNet 모델</a><a href="#학습-및-평가" data-toc-link data-heading-id="학습-및-평가" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>학습 및 평가</a></nav></aside><script type="module">function o(){const t=document.querySelectorAll("[data-toc-link]");if(!t.length)return;const n=Array.from(t).map(e=>e.dataset.headingId).map(e=>document.getElementById(e)).filter(Boolean);if(!n.length)return;const a=new IntersectionObserver(e=>{for(const r of e)r.isIntersecting&&(t.forEach(i=>i.classList.remove("active")),document.querySelector(`[data-heading-id="${r.target.id}"]`)?.classList.add("active"))},{rootMargin:"-80px 0px -60% 0px",threshold:0});n.forEach(e=>a.observe(e))}o();document.addEventListener("astro:after-swap",o);</script> </div> </div>  </main> <footer class="border-t border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-secondary)/50 dark:bg-(--color-dark-bg-secondary)/50"> <div class="max-w-5xl mx-auto px-6 py-10"> <div class="flex flex-col md:flex-row items-center justify-between gap-6"> <div class="flex flex-col items-center md:items-start gap-1"> <p class="text-sm font-medium text-(--color-text-primary) dark:text-(--color-dark-text-primary)">
+Blog
+</p> <p class="text-xs text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)">
+&copy; 2026 Sbeom12. All rights reserved.
+</p> </div> <div class="flex items-center gap-6"> <a href="https://github.com/Sbeom12" target="_blank" rel="noopener noreferrer" class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+GitHub
+</a> <span class="w-1 h-1 rounded-full bg-(--color-border) dark:bg-(--color-dark-border)"></span> <a href="/rss.xml" class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+RSS
+</a> </div> </div> </div> </footer> </body></html>
