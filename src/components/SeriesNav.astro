@@ -12,7 +12,7 @@ interface Props {
 }
 
 const { seriesName, posts, currentSlug } = Astro.props;
-const sorted = posts.sort((a, b) => a.order - b.order);
+const sorted = [...posts].sort((a, b) => a.order - b.order);
 ---
 <div class="my-8 p-6 rounded-xl border border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary)">
   <p class="text-sm font-semibold text-(--color-accent) dark:text-(--color-dark-accent) mb-3">

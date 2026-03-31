@@ -20,6 +20,7 @@ const currentPath = Astro.url.pathname;
       {navLinks.map(link => (
         <a
           href={link.href}
+          aria-current={currentPath.startsWith(link.href) ? 'page' : undefined}
           class:list={[
             'text-sm font-medium transition-colors',
             currentPath.startsWith(link.href)
@@ -50,8 +51,9 @@ const currentPath = Astro.url.pathname;
       {navLinks.map(link => (
         <a
           href={link.href}
+          aria-current={currentPath.startsWith(link.href) ? 'page' : undefined}
           class:list={[
-            'text-sm font-medium transition-colors',
+            'mobile-nav-link text-sm font-medium transition-colors',
             currentPath.startsWith(link.href)
               ? 'text-(--color-accent) dark:text-(--color-dark-accent)'
               : 'text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)',
@@ -68,7 +70,12 @@ const currentPath = Astro.url.pathname;
   function initMobileMenu() {
     const btn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
+
     btn?.addEventListener('click', () => menu?.classList.toggle('hidden'));
+
+    document.querySelectorAll('.mobile-nav-link').forEach(link => {
+      link.addEventListener('click', () => menu?.classList.add('hidden'));
+    });
   }
   initMobileMenu();
   document.addEventListener('astro:after-swap', initMobileMenu);

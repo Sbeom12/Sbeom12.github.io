@@ -12,18 +12,18 @@ const recentPosts = posts.slice(0, 4);
 <BaseLayout title="Blog">
   <Hero />
 
-  <section class="max-w-3xl mx-auto px-6 pb-20">
-    <div class="flex items-center justify-between mb-8">
-      <h2 class="text-2xl font-bold">최신 글</h2>
+  <section class="max-w-3xl mx-auto px-6 py-16">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-bold">최신 글</h2>
       <a
         href="/blog"
-        class="text-sm text-(--color-accent) dark:text-(--color-dark-accent) hover:underline"
+        class="text-sm text-(--color-accent) dark:text-(--color-dark-accent) hover:underline font-medium"
       >
         전체 보기 &rarr;
       </a>
     </div>
 
-    <div class="space-y-2">
+    <div class="space-y-4">
       {recentPosts.map(post => (
         <PostCard
           title={post.data.title}
@@ -36,9 +36,11 @@ const recentPosts = posts.slice(0, 4);
     </div>
 
     {recentPosts.length === 0 && (
-      <p class="text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) text-center py-12">
-        아직 작성된 글이 없습니다.
-      </p>
+      <div class="text-center py-16 rounded-2xl border border-dashed border-(--color-border) dark:border-(--color-dark-border)">
+        <p class="text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)">
+          아직 작성된 글이 없습니다.
+        </p>
+      </div>
     )}
   </section>
 </BaseLayout>

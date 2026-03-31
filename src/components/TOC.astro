@@ -9,16 +9,18 @@ const { headings } = Astro.props;
 const filteredHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
 ---
 {filteredHeadings.length > 0 && (
-  <aside class="hidden xl:block sticky top-24 ml-8 w-64 shrink-0">
+  <aside class="hidden xl:block sticky top-24 ml-8 w-64 shrink-0 pl-6 border-l border-(--color-border) dark:border-(--color-dark-border)">
     <p class="text-sm font-semibold mb-3 text-(--color-text-primary) dark:text-(--color-dark-text-primary)">
       목차
     </p>
-    <nav class="space-y-1.5">
+    <nav aria-label="Table of contents" class="space-y-1.5">
       {filteredHeadings.map(heading => (
         <a
           href={`#${heading.slug}`}
+          data-toc-link
+          data-heading-id={heading.slug}
           class:list={[
-            'block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors',
+            'toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors',
             heading.depth === 3 && 'pl-4',
           ]}
         >
@@ -28,3 +30,42 @@ const filteredHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
     </nav>
   </aside>
 )}
+
+<style>
+  .toc-link.active {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+  :global(.dark) .toc-link.active {
+    color: var(--color-dark-accent);
+  }
+</style>
+
+<script>
+  function initTOC() {
+    const links = document.querySelectorAll('[data-toc-link]');
+    if (!links.length) return;
+
+    const headingIds = Array.from(links).map(l => (l as HTMLElement).dataset.headingId!);
+    const headings = headingIds.map(id => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+
+    if (!headings.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            links.forEach(l => l.classList.remove('active'));
+            const link = document.querySelector(`[data-heading-id="${entry.target.id}"]`);
+            link?.classList.add('active');
+          }
+        }
+      },
+      { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
+    );
+
+    headings.forEach(h => observer.observe(h));
+  }
+  initTOC();
+  document.addEventListener('astro:after-swap', initTOC);
+</script>

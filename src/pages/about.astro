@@ -5,18 +5,18 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   <div class="max-w-3xl mx-auto px-6 py-16">
     <h1 class="text-3xl font-bold mb-8">About</h1>
 
-    <div class="prose prose-lg dark:prose-invert max-w-none">
+    <div class="prose prose-lg prose-blog max-w-none">
       <section>
         <h2>소개</h2>
         <p>
-          안녕하세요. 개발자 블로그에 오신 것을 환영합니다.
+          안녕하세요. 제 블로그에 오신 것을 환영합니다.
         </p>
       </section>
 
       <section>
         <h2>기술 스택</h2>
         <div class="not-prose grid grid-cols-2 md:grid-cols-3 gap-3 my-6">
-          {['Python', 'TypeScript', 'Docker', 'AWS', 'Git'].map(skill => (
+          {['Python', 'Langgraph', 'RAG', 'Docker', 'AWS', 'Git'].map(skill => (
             <div class="px-4 py-3 rounded-xl border border-(--color-border) dark:border-(--color-dark-border) text-sm font-medium text-center">
               {skill}
             </div>

@@ -35,27 +35,40 @@ const { tags } = Astro.props;
 </style>
 
 <script>
-  function initTagFilter() {
+  function initFilters() {
     const buttons = document.querySelectorAll('.tag-btn');
+    const input = document.getElementById('search-input') as HTMLInputElement | null;
     const posts = document.querySelectorAll('[data-tags]');
+
+    let activeTag = 'all';
+
+    function applyFilters() {
+      const query = input?.value.toLowerCase() || '';
+
+      posts.forEach(post => {
+        const el = post as HTMLElement;
+        const title = (el.dataset.title || '').toLowerCase();
+        const tagsStr = el.dataset.tags || '';
+        const tagList = tagsStr.split(',').filter(Boolean);
+
+        const matchesTag = activeTag === 'all' || tagList.includes(activeTag);
+        const matchesSearch = !query || title.includes(query) || tagsStr.toLowerCase().includes(query);
+
+        el.style.display = matchesTag && matchesSearch ? '' : 'none';
+      });
+    }
 
     buttons.forEach(btn => {
       btn.addEventListener('click', () => {
         buttons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-
-        const tag = (btn as HTMLElement).dataset.tag;
-        posts.forEach(post => {
-          const postTags = (post as HTMLElement).dataset.tags || '';
-          if (tag === 'all' || postTags.includes(tag!)) {
-            (post as HTMLElement).style.display = '';
-          } else {
-            (post as HTMLElement).style.display = 'none';
-          }
-        });
+        activeTag = (btn as HTMLElement).dataset.tag || 'all';
+        applyFilters();
       });
     });
+
+    input?.addEventListener('input', applyFilters);
   }
-  initTagFilter();
-  document.addEventListener('astro:after-swap', initTagFilter);
+  initFilters();
+  document.addEventListener('astro:after-swap', initFilters);
 </script>
