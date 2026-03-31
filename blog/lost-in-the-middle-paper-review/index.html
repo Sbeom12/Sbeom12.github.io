@@ -1,0 +1,271 @@
+<!DOCTYPE html><html lang="ko" class="dark"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="google-site-verification" content="rIn3fOE7cFCrJFnwHSepci620PG65JKXRTlJpGBqk_4"><meta name="generator" content="Astro v6.1.1"><title>[논문 리뷰] Lost in the Middle: How Language Models Use Long Contexts</title><meta name="description" content="LLM이 긴 컨텍스트를 실제로 얼마나 잘 활용하는지 분석한 논문을 리뷰합니다. RAG 시스템 설계에 중요한 시사점을 제공하는 연구입니다."><link rel="canonical" href="https://sbeom12.github.io/blog/lost-in-the-middle-paper-review/"><!-- Open Graph --><meta property="og:type" content="website"><meta property="og:url" content="https://sbeom12.github.io/blog/lost-in-the-middle-paper-review/"><meta property="og:title" content="[논문 리뷰] Lost in the Middle: How Language Models Use Long Contexts"><meta property="og:description" content="LLM이 긴 컨텍스트를 실제로 얼마나 잘 활용하는지 분석한 논문을 리뷰합니다. RAG 시스템 설계에 중요한 시사점을 제공하는 연구입니다."><!-- Twitter --><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="[논문 리뷰] Lost in the Middle: How Language Models Use Long Contexts"><meta name="twitter:description" content="LLM이 긴 컨텍스트를 실제로 얼마나 잘 활용하는지 분석한 논문을 리뷰합니다. RAG 시스템 설계에 중요한 시사점을 제공하는 연구입니다."><meta http-equiv="X-Content-Type-Options" content="nosniff"><meta http-equiv="X-Frame-Options" content="DENY"><meta name="referrer" content="strict-origin-when-cross-origin"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="sitemap" href="/sitemap-index.xml"><link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml"><!-- Prevent flash of wrong theme --><script>
+    (function() {
+      const theme = localStorage.getItem('theme') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+    })();
+  </script><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.j56hQv-j.js"></script><script>
+    function addCopyButtons() {
+      document.querySelectorAll('.prose-blog pre').forEach(function(pre) {
+        if (pre.querySelector('.code-copy-btn')) return;
+        var btn = document.createElement('button');
+        btn.className = 'code-copy-btn';
+        btn.textContent = 'Copy';
+        btn.addEventListener('click', function() {
+          var code = pre.querySelector('code');
+          if (code) {
+            navigator.clipboard.writeText(code.textContent || '');
+            btn.textContent = 'Copied!';
+            setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+          }
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(btn);
+      });
+    }
+    document.addEventListener('DOMContentLoaded', addCopyButtons);
+    document.addEventListener('astro:after-swap', addCopyButtons);
+  </script><style>.toc-link[data-astro-cid-obewoz47].active{color:var(--color-accent);font-weight:600}.dark .toc-link[data-astro-cid-obewoz47].active{color:var(--color-dark-accent)}
+</style>
+<link rel="stylesheet" href="/_astro/BaseLayout.BoPTYjkr.css"></head> <body class="min-h-screen flex flex-col bg-(--color-bg-primary) dark:bg-(--color-dark-bg-primary) text-(--color-text-primary) dark:text-(--color-dark-text-primary) transition-colors"> <nav class="sticky top-0 z-50 border-b border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-primary)/80 dark:bg-(--color-dark-bg-primary)/80 backdrop-blur-md"> <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between"> <a href="/" class="text-xl font-bold text-(--color-text-primary) dark:text-(--color-dark-text-primary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+Blog
+</a> <!-- Desktop --> <div class="hidden md:flex items-center gap-8"> <a href="/blog" aria-current="page" class="text-sm font-medium transition-colors text-(--color-accent) dark:text-(--color-dark-accent)"> Blog </a><a href="/series" class="text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-text-primary) dark:hover:text-(--color-dark-text-primary)"> Series </a><a href="/about" class="text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-text-primary) dark:hover:text-(--color-dark-text-primary)"> About </a> <button type="button" aria-label="Toggle dark mode" class="theme-toggle p-2 rounded-lg hover:bg-(--color-border) dark:hover:bg-(--color-dark-border) transition-colors"> <svg class="icon-sun hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <circle cx="12" cy="12" r="5"></circle> <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path> </svg> <svg class="icon-moon hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path> </svg> </button> <script type="module">function n(){const c=document.querySelectorAll(".theme-toggle");function r(){const e=localStorage.getItem("theme");return e||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}function o(e){document.documentElement.classList.toggle("dark",e==="dark"),document.querySelectorAll(".icon-sun").forEach(t=>t.classList.toggle("hidden",e==="dark")),document.querySelectorAll(".icon-moon").forEach(t=>t.classList.toggle("hidden",e!=="dark"))}o(r()),c.forEach(e=>{e.addEventListener("click",()=>{const t=document.documentElement.classList.contains("dark")?"light":"dark";localStorage.setItem("theme",t),o(t)})})}n();document.addEventListener("astro:after-swap",n);</script> </div> <!-- Mobile hamburger --> <div class="flex items-center gap-4 md:hidden"> <button type="button" aria-label="Toggle dark mode" class="theme-toggle p-2 rounded-lg hover:bg-(--color-border) dark:hover:bg-(--color-dark-border) transition-colors"> <svg class="icon-sun hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <circle cx="12" cy="12" r="5"></circle> <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path> </svg> <svg class="icon-moon hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path> </svg> </button>  <button id="mobile-menu-btn" type="button" aria-label="Open menu" class="p-2"> <svg class="w-6 h-6 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M4 6h16M4 12h16M4 18h16"></path> </svg> </button> </div> </div> <!-- Mobile menu --> <div id="mobile-menu" class="hidden md:hidden border-t border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-primary) dark:bg-(--color-dark-bg-primary)"> <div class="px-6 py-4 flex flex-col gap-4"> <a href="/blog" aria-current="page" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-accent) dark:text-(--color-dark-accent)"> Blog </a><a href="/series" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)"> Series </a><a href="/about" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)"> About </a> </div> </div> </nav> <script type="module">function n(){const t=document.getElementById("mobile-menu-btn"),e=document.getElementById("mobile-menu");t?.addEventListener("click",()=>e?.classList.toggle("hidden")),document.querySelectorAll(".mobile-nav-link").forEach(d=>{d.addEventListener("click",()=>e?.classList.add("hidden"))})}n();document.addEventListener("astro:after-swap",n);</script> <main class="flex-1">  <div class="max-w-3xl xl:max-w-5xl mx-auto px-6 py-16"> <!-- Header --> <header class="max-w-3xl mb-8"> <div class="flex items-center gap-3 text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) mb-4"> <time class="tabular-nums">2025년 2월 20일</time> <span class="w-1 h-1 rounded-full bg-(--color-border) dark:bg-(--color-dark-border)"></span> <span>13분 읽기</span> </div> <h1 class="text-3xl md:text-4xl font-bold leading-tight">[논문 리뷰] Lost in the Middle: How Language Models Use Long Contexts</h1> <p class="mt-3 text-lg text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) leading-relaxed"> LLM이 긴 컨텍스트를 실제로 얼마나 잘 활용하는지 분석한 논문을 리뷰합니다. RAG 시스템 설계에 중요한 시사점을 제공하는 연구입니다. </p> <div class="mt-4 flex flex-wrap gap-1.5"> <a href="/blog?tag=AI" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> AI </a><a href="/blog?tag=NLP" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> NLP </a><a href="/blog?tag=논문리뷰" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> 논문리뷰 </a><a href="/blog?tag=RAG" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> RAG </a><a href="/blog?tag=LLM" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> LLM </a> </div> </header> <hr class="border-(--color-border) dark:border-(--color-dark-border) mb-10"> <!-- Content + TOC --> <div class="flex"> <article class="min-w-0 flex-1 max-w-3xl"> <div class="prose prose-lg prose-blog max-w-none"> <h2 id="개요">개요</h2>
+<blockquote>
+<p>Nelson F. Liu, Kevin Lin, John Hewitt, Ashwin Paranjape, Michele Bevilacqua, Fabio Petroni, Percy Liang (2023)
+<a href="https://arxiv.org/abs/2307.03172">논문 링크</a> | <a href="https://github.com/nelson-liu/lost-in-the-middle">GitHub</a></p>
+</blockquote>
+<p>최근 LLM들은 점점 더 긴 컨텍스트를 처리할 수 있게 되었습니다. GPT-4는 128K, Claude는 100K 토큰을 지원하죠. 하지만 <strong>길게 입력할 수 있다는 것과 실제로 잘 활용한다는 것은 다른 문제</strong>입니다.</p>
+<p>이 논문은 바로 그 질문에 답합니다: LLM이 긴 입력 컨텍스트를 <strong>실제로</strong> 얼마나 잘 활용하는가?</p>
+<hr>
+<h2 id="핵심-발견-u자형-성능-곡선">핵심 발견: U자형 성능 곡선</h2>
+<p>논문의 가장 중요한 발견은 다음과 같습니다:</p>
+<ul>
+<li>관련 정보가 입력의 <strong>처음이나 끝</strong>에 위치할 때 성능이 가장 좋음</li>
+<li>관련 정보가 입력의 <strong>중간</strong>에 위치할 때 성능이 급격히 하락</li>
+<li>심지어 관련 문서가 <strong>아예 없는 경우보다도</strong> 중간에 있을 때 성능이 낮은 경우도 있음</li>
+</ul>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>성능</span></span>
+<span class="line"><span>  ↑</span></span>
+<span class="line"><span>  │  ★                              ★</span></span>
+<span class="line"><span>  │    ╲                          ╱</span></span>
+<span class="line"><span>  │      ╲                      ╱</span></span>
+<span class="line"><span>  │        ╲                  ╱</span></span>
+<span class="line"><span>  │          ╲    ________  ╱</span></span>
+<span class="line"><span>  │            ╲╱</span></span>
+<span class="line"><span>  │</span></span>
+<span class="line"><span>  └──────────────────────────────→ 관련 정보의 위치</span></span>
+<span class="line"><span>     처음      중간      끝</span></span></code></pre>
+<p>이 현상을 저자들은 **“Lost in the Middle”**이라고 명명했습니다.</p>
+<hr>
+<h2 id="실험-설계">실험 설계</h2>
+<h3 id="사용-모델">사용 모델</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>모델</th><th>최대 토큰</th><th>특징</th></tr></thead><tbody><tr><td>MPT-30B-Instruct</td><td>8,192</td><td>ALiBi 위치 인코딩, 1T 토큰 학습</td></tr><tr><td>LongChat-13B</td><td>16,384</td><td>16K 시퀀스로 파인튜닝</td></tr><tr><td>GPT-3.5-Turbo</td><td>4K / 16K</td><td>OpenAI 상용 모델</td></tr><tr><td>Claude-1.3</td><td>8K / 100K</td><td>Anthropic 상용 모델</td></tr></tbody></table>
+<h3 id="task-1-multi-document-qa">Task 1: Multi-Document QA</h3>
+<p>여러 개의 문서를 입력으로 제공하고, 그 중 하나의 문서에만 정답이 포함된 상황에서 QA를 수행합니다.</p>
+<p><strong>실험 방법:</strong></p>
+<ol>
+<li>정답이 포함된 문서 1개 + 관련 없는 문서 N개를 입력으로 구성</li>
+<li>정답 문서의 <strong>위치를 변경</strong>하며 성능 측정 (처음, 중간, 끝)</li>
+<li>전체 문서 수를 변경하며 컨텍스트 길이에 따른 성능 변화 측정</li>
+</ol>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D"># 실험 구성 예시 (의사 코드)</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">def</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> build_qa_input</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(documents, answer_doc, position):</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    """정답 문서를 특정 위치에 배치하여 입력 구성"""</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    other_docs </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> [d </span><span style="color:#D73A49;--shiki-dark:#F97583">for</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> d </span><span style="color:#D73A49;--shiki-dark:#F97583">in</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> documents </span><span style="color:#D73A49;--shiki-dark:#F97583">if</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> d </span><span style="color:#D73A49;--shiki-dark:#F97583">!=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> answer_doc]</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    if</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> position </span><span style="color:#D73A49;--shiki-dark:#F97583">==</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> "beginning"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">:</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        ordered </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> [answer_doc] </span><span style="color:#D73A49;--shiki-dark:#F97583">+</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> other_docs</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    elif</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> position </span><span style="color:#D73A49;--shiki-dark:#F97583">==</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> "middle"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">:</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        mid </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> len</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(other_docs) </span><span style="color:#D73A49;--shiki-dark:#F97583">//</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> 2</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        ordered </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> other_docs[:mid] </span><span style="color:#D73A49;--shiki-dark:#F97583">+</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> [answer_doc] </span><span style="color:#D73A49;--shiki-dark:#F97583">+</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> other_docs[mid:]</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    elif</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> position </span><span style="color:#D73A49;--shiki-dark:#F97583">==</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> "end"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">:</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        ordered </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> other_docs </span><span style="color:#D73A49;--shiki-dark:#F97583">+</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> [answer_doc]</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    context </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> "</span><span style="color:#005CC5;--shiki-dark:#79B8FF">\n\n</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.join([</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">        f</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"Document [</span><span style="color:#005CC5;--shiki-dark:#79B8FF">{</span><span style="color:#24292E;--shiki-dark:#E1E4E8">i</span><span style="color:#D73A49;--shiki-dark:#F97583">+</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1}</span><span style="color:#032F62;--shiki-dark:#9ECBFF">]: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">{</span><span style="color:#24292E;--shiki-dark:#E1E4E8">doc</span><span style="color:#005CC5;--shiki-dark:#79B8FF">}</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"</span><span style="color:#D73A49;--shiki-dark:#F97583"> for</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> i, doc </span><span style="color:#D73A49;--shiki-dark:#F97583">in</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> enumerate</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(ordered)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    ])</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    return</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> context</span></span></code></pre>
+<h3 id="task-2-key-value-retrieval">Task 2: Key-Value Retrieval</h3>
+<p>더 통제된 환경에서의 검증을 위해 합성 데이터 기반 실험도 수행했습니다. N개의 Key-Value 쌍 중 특정 Key에 해당하는 Value를 찾는 단순한 태스크입니다.</p>
+<p>이 태스크에서도 동일한 U자형 패턴이 관찰되었으며, 이는 현상이 태스크에 국한된 것이 아닌 <strong>모델의 근본적인 한계</strong>임을 시사합니다.</p>
+<hr>
+<h2 id="실험-결과-분석">실험 결과 분석</h2>
+<h3 id="주요-결과">주요 결과</h3>
+<ol>
+<li><strong>모든 모델에서 U자형 곡선 관찰</strong>: 오픈소스, 상용 모델 불문</li>
+<li><strong>컨텍스트가 길수록 성능 하락 심화</strong>: 문서 수가 많아질수록 중간 위치의 성능이 더 낮아짐</li>
+<li><strong>상용 모델도 예외가 아님</strong>: GPT-3.5-Turbo와 Claude-1.3도 동일한 패턴</li>
+</ol>
+<h3 id="왜-이런-현상이-발생하는가">왜 이런 현상이 발생하는가?</h3>
+<p>저자들은 몇 가지 가능한 원인을 제시합니다:</p>
+<ul>
+<li><strong>학습 데이터 편향</strong>: 대부분의 학습 데이터에서 중요한 정보가 문서의 앞이나 뒤에 위치</li>
+<li><strong>위치 인코딩의 한계</strong>: Attention 메커니즘이 먼 위치의 토큰에 대해 약해지는 경향</li>
+<li><strong>Primacy/Recency 효과</strong>: 인간의 기억과 유사하게, 처음과 마지막에 본 정보를 더 잘 기억</li>
+</ul>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D"># Attention 패턴 시각화 (개념적 코드)</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> numpy </span><span style="color:#D73A49;--shiki-dark:#F97583">as</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> np</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">def</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> attention_pattern</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(seq_length, decay_factor</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">0.1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">):</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    """위치에 따른 Attention 강도 시뮬레이션"""</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    positions </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> np.arange(seq_length)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    mid </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> seq_length </span><span style="color:#D73A49;--shiki-dark:#F97583">//</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> 2</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D">    # U자형 패턴: 처음과 끝에서 높고 중간에서 낮음</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    attention </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> np.exp(</span><span style="color:#D73A49;--shiki-dark:#F97583">-</span><span style="color:#24292E;--shiki-dark:#E1E4E8">decay_factor </span><span style="color:#D73A49;--shiki-dark:#F97583">*</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> np.minimum(positions, seq_length </span><span style="color:#D73A49;--shiki-dark:#F97583">-</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> positions </span><span style="color:#D73A49;--shiki-dark:#F97583">-</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> 1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">))</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D">    # Primacy bias (처음 위치에 추가 가중치)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    attention[:</span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">] </span><span style="color:#D73A49;--shiki-dark:#F97583">*=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> 1.5</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    return</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> attention </span><span style="color:#D73A49;--shiki-dark:#F97583">/</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> attention.sum()</span></span></code></pre>
+<hr>
+<h2 id="rag-시스템에-대한-시사점">RAG 시스템에 대한 시사점</h2>
+<p>이 논문의 발견은 RAG(Retrieval-Augmented Generation) 시스템 설계에 직접적인 영향을 줍니다.</p>
+<h3 id="문제-검색된-문서의-순서">문제: 검색된 문서의 순서</h3>
+<p>일반적인 RAG 시스템에서는 관련성 점수가 높은 순서대로 문서를 나열합니다. 하지만 이렇게 하면 <strong>가장 관련성 높은 문서가 맨 앞에, 덜 관련된 문서가 뒤에</strong> 배치되어, LLM이 뒤쪽의 보조 정보를 놓칠 수 있습니다.</p>
+<h3 id="해결-long-context-reorder">해결: Long Context Reorder</h3>
+<p>이 논문의 발견에 기반하여, <strong>중요한 문서를 입력의 처음과 끝에 배치</strong>하는 Reordering 전략이 제안되었습니다.</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> langchain_community.document_transformers </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> LongContextReorder</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">def</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> apply_reordering</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(documents: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">list</span><span style="color:#24292E;--shiki-dark:#E1E4E8">) -> </span><span style="color:#005CC5;--shiki-dark:#79B8FF">list</span><span style="color:#24292E;--shiki-dark:#E1E4E8">:</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    """Lost in the Middle 현상을 완화하기 위한 문서 재배치</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    관련성 순위: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    재배치 결과: [1, 3, 5, 7, 9, 10, 8, 6, 4, 2]</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    → 홀수 순위는 앞에서부터, 짝수 순위는 뒤에서부터 배치</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    → 가장 중요한 문서들이 처음과 끝에 위치</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    """</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    reordering </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> LongContextReorder()</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    reordered </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> reordering.transform_documents(documents)</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    return</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> reordered</span></span></code></pre>
+<h3 id="실제-rag-파이프라인에서의-적용">실제 RAG 파이프라인에서의 적용</h3>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> langchain_community.vectorstores </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> FAISS</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> langchain_community.document_transformers </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> LongContextReorder</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> langchain_openai </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> ChatOpenAI, OpenAIEmbeddings</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> langchain_core.prompts </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> ChatPromptTemplate</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> langchain_core.runnables </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> RunnablePassthrough</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> langchain_core.output_parsers </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> StrOutputParser</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D"># 검색기 설정</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">embeddings </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> OpenAIEmbeddings(</span><span style="color:#E36209;--shiki-dark:#FFAB70">model</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"text-embedding-3-small"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">vectorstore </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> FAISS</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.from_documents(documents, embeddings)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">retriever </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> vectorstore.as_retriever(</span><span style="color:#E36209;--shiki-dark:#FFAB70">search_kwargs</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8">{</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"k"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">20</span><span style="color:#24292E;--shiki-dark:#E1E4E8">})</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D"># Reordering 적용</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">reordering </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> LongContextReorder()</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">def</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> retrieve_and_reorder</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(query: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">str</span><span style="color:#24292E;--shiki-dark:#E1E4E8">) -> </span><span style="color:#005CC5;--shiki-dark:#79B8FF">str</span><span style="color:#24292E;--shiki-dark:#E1E4E8">:</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    """검색 → 재배치 → 포맷팅"""</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    docs </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> retriever.invoke(query)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    reordered </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> reordering.transform_documents(docs)</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    return</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> "</span><span style="color:#005CC5;--shiki-dark:#79B8FF">\n\n</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.join([</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">        f</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"[문서 </span><span style="color:#005CC5;--shiki-dark:#79B8FF">{</span><span style="color:#24292E;--shiki-dark:#E1E4E8">i</span><span style="color:#D73A49;--shiki-dark:#F97583">+</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1}</span><span style="color:#032F62;--shiki-dark:#9ECBFF">] </span><span style="color:#005CC5;--shiki-dark:#79B8FF">{</span><span style="color:#24292E;--shiki-dark:#E1E4E8">doc.page_content</span><span style="color:#005CC5;--shiki-dark:#79B8FF">}</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">        for</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> i, doc </span><span style="color:#D73A49;--shiki-dark:#F97583">in</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> enumerate</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(reordered)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    ])</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D"># RAG 체인 구성</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">prompt </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> ChatPromptTemplate.from_messages([</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    (</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"system"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"컨텍스트를 기반으로 질문에 답변하세요.</span><span style="color:#005CC5;--shiki-dark:#79B8FF">\n\n{context}</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    (</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"user"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"</span><span style="color:#005CC5;--shiki-dark:#79B8FF">{question}</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">])</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">chain </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> (</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    {</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"context"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: retrieve_and_reorder, </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"question"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: RunnablePassthrough()}</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    |</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> prompt</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    |</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> ChatOpenAI(</span><span style="color:#E36209;--shiki-dark:#FFAB70">model</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"gpt-4o-mini"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">temperature</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    |</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> StrOutputParser()</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span></code></pre>
+<hr>
+<h2 id="추가-고려사항">추가 고려사항</h2>
+<h3 id="reranking과의-조합">Reranking과의 조합</h3>
+<p>실제 프로덕션 환경에서는 Reordering을 단독으로 사용하기보다, <strong>Reranking 이후에 적용</strong>하는 것이 효과적입니다:</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>검색 (Top-K) → Reranking (Cross-Encoder) → Reordering → LLM</span></span></code></pre>
+<ol>
+<li><strong>검색</strong>: Dense Retriever로 후보 문서 20개 검색</li>
+<li><strong>Reranking</strong>: Cross-Encoder로 정확도 높은 상위 10개 선별</li>
+<li><strong>Reordering</strong>: 선별된 10개를 U자형 배치로 재배치</li>
+<li><strong>LLM</strong>: 재배치된 컨텍스트로 답변 생성</li>
+</ol>
+<h3 id="한계점">한계점</h3>
+<ul>
+<li>논문이 2023년 기준이므로, 최신 모델(GPT-4o, Claude 3.5 등)에서는 개선되었을 가능성</li>
+<li>위치 인코딩 기법의 발전(RoPE 개선, YaRN 등)으로 완화될 수 있음</li>
+<li>하지만 근본적인 Attention 메커니즘의 한계는 여전히 존재</li>
+</ul>
+<hr>
+<h2 id="정리">정리</h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>항목</th><th>내용</th></tr></thead><tbody><tr><td><strong>핵심 발견</strong></td><td>LLM은 긴 컨텍스트의 중간에 위치한 정보를 잘 활용하지 못함</td></tr><tr><td><strong>패턴</strong></td><td>U자형 성능 곡선 (처음/끝 > 중간)</td></tr><tr><td><strong>원인</strong></td><td>학습 데이터 편향, 위치 인코딩 한계, Primacy/Recency 효과</td></tr><tr><td><strong>실무 적용</strong></td><td>RAG에서 Reordering 전략으로 중요 문서를 입력 경계에 배치</td></tr><tr><td><strong>구현</strong></td><td>LangChain <code>LongContextReorder</code> 활용</td></tr></tbody></table>
+<p>이 논문은 “더 긴 컨텍스트 = 더 좋은 성능”이라는 단순한 가정에 의문을 제기합니다. RAG 시스템을 설계할 때 단순히 문서를 많이 넣는 것이 아니라, <strong>어떤 순서로 배치할 것인가</strong>까지 고려해야 한다는 중요한 교훈을 줍니다.</p>
+<hr>
+<p><em>이 글은 <a href="https://arxiv.org/abs/2307.03172">Lost in the Middle: How Language Models Use Long Contexts</a> 논문을 리뷰한 글입니다.</em></p>   </div>  <nav aria-label="Post navigation" class="mt-16 pt-8 border-t border-(--color-border) dark:border-(--color-dark-border) grid grid-cols-1 md:grid-cols-2 gap-4"><div></div><a href="/blog/boostcamp-nlp-retrospective" class="group p-5 rounded-xl border border-(--color-border) dark:border-(--color-dark-border) hover:border-(--color-accent) dark:hover:border-(--color-dark-accent) transition-all duration-200 text-right"><span class="text-xs font-medium text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) uppercase tracking-wide">다음 글 &rarr;</span><p class="mt-2 text-sm font-semibold group-hover:text-(--color-accent) dark:group-hover:text-(--color-dark-accent) transition-colors line-clamp-1">부스트캠프 7기 NLP 트랙 최종 회고</p></a></nav>  </article> <aside class="hidden xl:block sticky top-24 ml-8 w-64 shrink-0 pl-6 border-l border-(--color-border) dark:border-(--color-dark-border)" data-astro-cid-obewoz47><p class="text-sm font-semibold mb-3 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" data-astro-cid-obewoz47>
+목차
+</p><nav aria-label="Table of contents" class="space-y-1.5" data-astro-cid-obewoz47><a href="#개요" data-toc-link data-heading-id="개요" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>개요</a><a href="#핵심-발견-u자형-성능-곡선" data-toc-link data-heading-id="핵심-발견-u자형-성능-곡선" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>핵심 발견: U자형 성능 곡선</a><a href="#실험-설계" data-toc-link data-heading-id="실험-설계" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>실험 설계</a><a href="#사용-모델" data-toc-link data-heading-id="사용-모델" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>사용 모델</a><a href="#task-1-multi-document-qa" data-toc-link data-heading-id="task-1-multi-document-qa" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Task 1: Multi-Document QA</a><a href="#task-2-key-value-retrieval" data-toc-link data-heading-id="task-2-key-value-retrieval" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Task 2: Key-Value Retrieval</a><a href="#실험-결과-분석" data-toc-link data-heading-id="실험-결과-분석" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>실험 결과 분석</a><a href="#주요-결과" data-toc-link data-heading-id="주요-결과" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>주요 결과</a><a href="#왜-이런-현상이-발생하는가" data-toc-link data-heading-id="왜-이런-현상이-발생하는가" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>왜 이런 현상이 발생하는가?</a><a href="#rag-시스템에-대한-시사점" data-toc-link data-heading-id="rag-시스템에-대한-시사점" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>RAG 시스템에 대한 시사점</a><a href="#문제-검색된-문서의-순서" data-toc-link data-heading-id="문제-검색된-문서의-순서" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>문제: 검색된 문서의 순서</a><a href="#해결-long-context-reorder" data-toc-link data-heading-id="해결-long-context-reorder" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>해결: Long Context Reorder</a><a href="#실제-rag-파이프라인에서의-적용" data-toc-link data-heading-id="실제-rag-파이프라인에서의-적용" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>실제 RAG 파이프라인에서의 적용</a><a href="#추가-고려사항" data-toc-link data-heading-id="추가-고려사항" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>추가 고려사항</a><a href="#reranking과의-조합" data-toc-link data-heading-id="reranking과의-조합" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Reranking과의 조합</a><a href="#한계점" data-toc-link data-heading-id="한계점" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>한계점</a><a href="#정리" data-toc-link data-heading-id="정리" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>정리</a></nav></aside><script type="module">function o(){const t=document.querySelectorAll("[data-toc-link]");if(!t.length)return;const n=Array.from(t).map(e=>e.dataset.headingId).map(e=>document.getElementById(e)).filter(Boolean);if(!n.length)return;const a=new IntersectionObserver(e=>{for(const r of e)r.isIntersecting&&(t.forEach(i=>i.classList.remove("active")),document.querySelector(`[data-heading-id="${r.target.id}"]`)?.classList.add("active"))},{rootMargin:"-80px 0px -60% 0px",threshold:0});n.forEach(e=>a.observe(e))}o();document.addEventListener("astro:after-swap",o);</script> </div> </div>  </main> <footer class="border-t border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-secondary)/50 dark:bg-(--color-dark-bg-secondary)/50"> <div class="max-w-5xl mx-auto px-6 py-10"> <div class="flex flex-col md:flex-row items-center justify-between gap-6"> <div class="flex flex-col items-center md:items-start gap-1"> <p class="text-sm font-medium text-(--color-text-primary) dark:text-(--color-dark-text-primary)">
+Blog
+</p> <p class="text-xs text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)">
+&copy; 2026 Sbeom12. All rights reserved.
+</p> </div> <div class="flex items-center gap-6"> <a href="https://github.com/Sbeom12" target="_blank" rel="noopener noreferrer" class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+GitHub
+</a> <span class="w-1 h-1 rounded-full bg-(--color-border) dark:bg-(--color-dark-border)"></span> <a href="/rss.xml" class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+RSS
+</a> </div> </div> </div> </footer> </body></html>
