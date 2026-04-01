@@ -51,7 +51,9 @@ Series: Vision Model </p> <ol class="space-y-1.5"> <li class="flex items-start g
 <p><img src="/images/posts/resnet/residual-block.png" alt="Residual Block의 구조"></p>
 <h3 id="핵심-아이디어">핵심 아이디어</h3>
 <p>기존 네트워크가 목표 함수 <code>H(x)</code>를 직접 학습하는 대신, <strong>잔차(residual)</strong> <code>F(x) = H(x) - x</code>를 학습합니다.</p>
-<p>$$H(x) = F(x) + x$$</p>
+<p>$$
+H(x) = F(x) + x
+$$</p>
 <p><strong>왜 이것이 효과적인가?</strong></p>
 <ul>
 <li><strong>Pre-conditioning</strong>: 최적 상태에서 <code>F(x) ≈ 0</code>이 되면 항등 함수에 수렴</li>
@@ -62,14 +64,18 @@ Series: Vision Model </p> <ol class="space-y-1.5"> <li class="flex items-start g
 <hr>
 <h2 id="identity-mapping-by-shortcuts">Identity Mapping by Shortcuts</h2>
 <h3 id="identity-shortcut-차원이-같을-때">Identity Shortcut (차원이 같을 때)</h3>
-<p>$$y = F(x, {W_i}) + x$$</p>
+<p>$$
+y = F(x, {W_i}) + x
+$$</p>
 <ul>
 <li>첫 번째 항: 학습되는 residual mapping</li>
 <li><code>F + x</code>: element-wise 덧셈 (shortcut connection)</li>
 <li>단순화하면: $F = W_2 \sigma(W_1 x)$ (σ는 ReLU)</li>
 </ul>
 <h3 id="projection-shortcut-차원이-다를-때">Projection Shortcut (차원이 다를 때)</h3>
-<p>$$y = F(x, {W_i}) + W_s x$$</p>
+<p>$$
+y = F(x, {W_i}) + W_s x
+$$</p>
 <ul>
 <li><code>Ws</code>: 1×1 Convolution으로 차원을 맞춰주는 행렬</li>
 <li>역전파 시에도 <code>Ws</code> 파라미터를 통해 gradient가 전달되므로 vanishing 방지</li>
