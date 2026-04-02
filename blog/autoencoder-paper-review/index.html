@@ -1,0 +1,365 @@
+<!DOCTYPE html><html lang="ko" class="dark"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="google-site-verification" content="rIn3fOE7cFCrJFnwHSepci620PG65JKXRTlJpGBqk_4"><meta name="generator" content="Astro v6.1.1"><title>[논문 리뷰] 딥러닝 기초 - Auto-Encoder</title><meta name="description" content="Hinton의 오토인코더 논문을 바탕으로 차원 축소, Manifold Learning, PCA와의 비교, 그리고 PyTorch 구현까지 정리합니다."><link rel="canonical" href="https://sbeom12.github.io/blog/autoencoder-paper-review/"><!-- Open Graph --><meta property="og:type" content="website"><meta property="og:url" content="https://sbeom12.github.io/blog/autoencoder-paper-review/"><meta property="og:title" content="[논문 리뷰] 딥러닝 기초 - Auto-Encoder"><meta property="og:description" content="Hinton의 오토인코더 논문을 바탕으로 차원 축소, Manifold Learning, PCA와의 비교, 그리고 PyTorch 구현까지 정리합니다."><!-- Twitter --><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="[논문 리뷰] 딥러닝 기초 - Auto-Encoder"><meta name="twitter:description" content="Hinton의 오토인코더 논문을 바탕으로 차원 축소, Manifold Learning, PCA와의 비교, 그리고 PyTorch 구현까지 정리합니다."><meta http-equiv="X-Content-Type-Options" content="nosniff"><meta http-equiv="X-Frame-Options" content="DENY"><meta name="referrer" content="strict-origin-when-cross-origin"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="sitemap" href="/sitemap-index.xml"><link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml"><!-- Prevent flash of wrong theme --><script>
+    (function() {
+      const theme = localStorage.getItem('theme') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+    })();
+  </script><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.j56hQv-j.js"></script><script>
+    function addCopyButtons() {
+      document.querySelectorAll('.prose-blog pre').forEach(function(pre) {
+        if (pre.querySelector('.code-copy-btn')) return;
+        var btn = document.createElement('button');
+        btn.className = 'code-copy-btn';
+        btn.textContent = 'Copy';
+        btn.addEventListener('click', function() {
+          var code = pre.querySelector('code');
+          if (code) {
+            navigator.clipboard.writeText(code.textContent || '');
+            btn.textContent = 'Copied!';
+            setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+          }
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(btn);
+      });
+    }
+    document.addEventListener('DOMContentLoaded', addCopyButtons);
+    document.addEventListener('astro:after-swap', addCopyButtons);
+  </script><style>.toc-link[data-astro-cid-obewoz47].active{color:var(--color-accent);font-weight:600}.dark .toc-link[data-astro-cid-obewoz47].active{color:var(--color-dark-accent)}.giscus-wrapper[data-astro-cid-an2nl7ar]{min-height:150px}.giscus-wrapper[data-astro-cid-an2nl7ar] .giscus,.giscus-wrapper[data-astro-cid-an2nl7ar] .giscus-frame{width:100%}#like-btn[data-astro-cid-rzlfooap].liked{border-color:var(--color-accent);background:var(--color-accent)}.dark #like-btn[data-astro-cid-rzlfooap].liked{border-color:var(--color-dark-accent);background:var(--color-dark-accent)}#like-btn[data-astro-cid-rzlfooap].liked .like-icon[data-astro-cid-rzlfooap]{color:#fff;fill:#fff}
+</style>
+<link rel="stylesheet" href="/_astro/BaseLayout.Cb84oDxJ.css"></head> <body class="min-h-screen flex flex-col bg-(--color-bg-primary) dark:bg-(--color-dark-bg-primary) text-(--color-text-primary) dark:text-(--color-dark-text-primary) transition-colors"> <nav class="sticky top-0 z-50 border-b border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-primary)/80 dark:bg-(--color-dark-bg-primary)/80 backdrop-blur-md"> <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between"> <a href="/" class="text-xl font-bold text-(--color-text-primary) dark:text-(--color-dark-text-primary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+Blog
+</a> <!-- Desktop --> <div class="hidden md:flex items-center gap-8"> <a href="/blog" aria-current="page" class="text-sm font-medium transition-colors text-(--color-accent) dark:text-(--color-dark-accent)"> Blog </a><a href="/series" class="text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-text-primary) dark:hover:text-(--color-dark-text-primary)"> Series </a><a href="/about" class="text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-text-primary) dark:hover:text-(--color-dark-text-primary)"> About </a> <button type="button" aria-label="Toggle dark mode" class="theme-toggle p-2 rounded-lg hover:bg-(--color-border) dark:hover:bg-(--color-dark-border) transition-colors"> <svg class="icon-sun hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <circle cx="12" cy="12" r="5"></circle> <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path> </svg> <svg class="icon-moon hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path> </svg> </button> <script type="module">function n(){const c=document.querySelectorAll(".theme-toggle");function r(){const e=localStorage.getItem("theme");return e||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}function o(e){document.documentElement.classList.toggle("dark",e==="dark"),document.querySelectorAll(".icon-sun").forEach(t=>t.classList.toggle("hidden",e==="dark")),document.querySelectorAll(".icon-moon").forEach(t=>t.classList.toggle("hidden",e!=="dark"))}o(r()),c.forEach(e=>{e.addEventListener("click",()=>{const t=document.documentElement.classList.contains("dark")?"light":"dark";localStorage.setItem("theme",t),o(t)})})}n();document.addEventListener("astro:after-swap",n);</script> </div> <!-- Mobile hamburger --> <div class="flex items-center gap-4 md:hidden"> <button type="button" aria-label="Toggle dark mode" class="theme-toggle p-2 rounded-lg hover:bg-(--color-border) dark:hover:bg-(--color-dark-border) transition-colors"> <svg class="icon-sun hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <circle cx="12" cy="12" r="5"></circle> <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path> </svg> <svg class="icon-moon hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path> </svg> </button>  <button id="mobile-menu-btn" type="button" aria-label="Open menu" class="p-2"> <svg class="w-6 h-6 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M4 6h16M4 12h16M4 18h16"></path> </svg> </button> </div> </div> <!-- Mobile menu --> <div id="mobile-menu" class="hidden md:hidden border-t border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-primary) dark:bg-(--color-dark-bg-primary)"> <div class="px-6 py-4 flex flex-col gap-4"> <a href="/blog" aria-current="page" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-accent) dark:text-(--color-dark-accent)"> Blog </a><a href="/series" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)"> Series </a><a href="/about" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)"> About </a> </div> </div> </nav> <script type="module">function n(){const t=document.getElementById("mobile-menu-btn"),e=document.getElementById("mobile-menu");t?.addEventListener("click",()=>e?.classList.toggle("hidden")),document.querySelectorAll(".mobile-nav-link").forEach(d=>{d.addEventListener("click",()=>e?.classList.add("hidden"))})}n();document.addEventListener("astro:after-swap",n);</script> <main class="flex-1">  <div class="max-w-3xl xl:max-w-5xl mx-auto px-6 py-16"> <!-- Header --> <header class="max-w-3xl mb-8"> <div class="flex items-center gap-3 text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) mb-4"> <time class="tabular-nums">2024년 1월 10일</time> <span class="w-1 h-1 rounded-full bg-(--color-border) dark:bg-(--color-dark-border)"></span> <span>15분 읽기</span> </div> <h1 class="text-3xl md:text-4xl font-bold leading-tight">[논문 리뷰] 딥러닝 기초 - Auto-Encoder</h1> <p class="mt-3 text-lg text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) leading-relaxed"> Hinton의 오토인코더 논문을 바탕으로 차원 축소, Manifold Learning, PCA와의 비교, 그리고 PyTorch 구현까지 정리합니다. </p> <div class="mt-4 flex flex-wrap gap-1.5"> <a href="/blog?tag=AI" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> AI </a><a href="/blog?tag=Deep Learning" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> Deep Learning </a><a href="/blog?tag=논문리뷰" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> 논문리뷰 </a><a href="/blog?tag=AutoEncoder" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> AutoEncoder </a> </div> </header> <hr class="border-(--color-border) dark:border-(--color-dark-border) mb-10"> <!-- Content + TOC --> <div class="flex"> <article class="min-w-0 flex-1 max-w-3xl"> <div class="prose prose-lg prose-blog max-w-none"> <div class="my-8 p-6 rounded-xl border border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary)"> <p class="text-sm font-semibold text-(--color-accent) dark:text-(--color-dark-accent) mb-3">
+Series: 딥러닝 기초 </p> <ol class="space-y-1.5"> <li class="flex items-start gap-2"> <span class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) shrink-0"> 1.
+</span> <span class="text-sm font-medium text-(--color-text-primary) dark:text-(--color-dark-text-primary)"> [논문 리뷰] 딥러닝 기초 - Auto-Encoder </span> </li> </ol> </div><h2 id="개요">개요</h2>
+<blockquote>
+<p>Geoffrey Hinton, Ruslan Salakhutdinov (2006)
+“Reducing the Dimensionality of Data with Neural Networks”</p>
+</blockquote>
+<p>딥러닝의 대부 Geoffrey Hinton이 제안한 오토인코더는 <strong>차원 축소 및 특징 추출</strong>을 위한 신경망 구조입니다. PCA의 선형적 한계를 뛰어넘어 비선형 Manifold를 학습할 수 있다는 점에서 큰 의미를 가집니다.</p>
+<hr>
+<h2 id="오토인코더-구조">오토인코더 구조</h2>
+<p><img src="/images/posts/autoencoder/structure.png" alt="오토인코더 구조"></p>
+<p>오토인코더는 세 가지 핵심 구성요소로 이루어집니다:</p>
+<p><strong>인코더 (Encoder)</strong></p>
+<ul>
+<li>고차원 입력을 저차원 은닉층(Latent Space)으로 압축</li>
+<li>차원이 높을수록 모델 복잡성 증가</li>
+</ul>
+<p><strong>코드 / Latent Space</strong></p>
+<ul>
+<li>인코더-디코더 연결점의 은닉층</li>
+<li>입력 데이터의 압축된 형태로, 중요한 특징만 포함</li>
+</ul>
+<p><strong>디코더 (Decoder)</strong></p>
+<ul>
+<li>저차원 은닉층을 고차원 출력으로 복원</li>
+<li>완벽하지 않지만 최대한 원본 데이터 복원 시도</li>
+</ul>
+<hr>
+<h2 id="등장-배경-왜-차원-축소가-필요한가">등장 배경: 왜 차원 축소가 필요한가</h2>
+<h3 id="차원의-저주-curse-of-dimensionality">차원의 저주 (Curse of Dimensionality)</h3>
+<p><img src="/images/posts/autoencoder/curse-of-dim.png" alt="차원의 저주"></p>
+<p>차원이 증가하면 데이터의 개수가 차원 크기보다 작아져 학습 효율이 급격히 저하됩니다.</p>
+<p><strong>문제점:</strong></p>
+<ul>
+<li>데이터 밀도 희박화</li>
+<li>필요한 샘플 수 기하급수적 증가</li>
+<li>KNN, SVM, GMM 등의 성능 악화</li>
+</ul>
+<p><strong>해결 방법:</strong></p>
+<ul>
+<li>PCA 같은 차원 축소 기법</li>
+<li>훈련 샘플 크기 증가</li>
+<li><strong>오토인코더를 통한 비선형 차원 축소</strong></li>
+</ul>
+<hr>
+<h2 id="manifold-learning">Manifold Learning</h2>
+<p>Manifold란 데이터가 존재하는 부분공간으로, 데이터를 최적으로 설명하는 <strong>저차원 구조</strong>입니다.</p>
+<p><img src="/images/posts/autoencoder/manifold.png" alt="Manifold 예시"></p>
+<h3 id="manifold-learning의-목적">Manifold Learning의 목적</h3>
+<p><strong>Data Compression</strong></p>
+<ul>
+<li>코드층으로 압축 후 원본으로 복원</li>
+<li>고차원 → 저차원 변환</li>
+</ul>
+<p><strong>Data Visualization</strong></p>
+<ul>
+<li>t-SNE 활용으로 비슷한 구조 정리</li>
+</ul>
+<p><img src="/images/posts/autoencoder/tsne-mnist.png" alt="t-SNE MNIST 시각화"></p>
+<p><strong>Curse of Dimensionality 개선</strong></p>
+<ul>
+<li>Manifold 발견으로 데이터 밀도 증가</li>
+<li>저차원 표현에서 높은 밀도 유지</li>
+</ul>
+<p><strong>Feature Discovery</strong></p>
+<ul>
+<li>유의미한 특징 자동 추출</li>
+<li>MNIST의 크기, 회전, 변형, 두께 등 학습</li>
+</ul>
+<blockquote>
+<p><strong>핵심:</strong> Manifold 위의 점 선택과 Euclidean 공간의 중점 선택은 다릅니다. 의미 있는 데이터 생성을 위해서는 Manifold 위에서 보간이 필수적입니다.</p>
+</blockquote>
+<hr>
+<h2 id="pca-주성분-분석">PCA (주성분 분석)</h2>
+<h3 id="개념">개념</h3>
+<p>고차원 데이터를 저차원으로 변환하는 <strong>선형</strong> 기법입니다.</p>
+<p><img src="/images/posts/autoencoder/variance.png" alt="분산 방향과 주성분"></p>
+<h3 id="수학적-원리">수학적 원리</h3>
+<p>분산이 최대인 방향이 주성분입니다:</p>
+<p>$$\text{분산} = w^T C w$$</p>
+<p>여기서 $C$는 공분산 행렬입니다. 라그랑주 승수법으로 제약 최적화하면:</p>
+<p>$$Cw = \lambda w$$</p>
+<p>이는 **고유값 분해(eigendecomposition)**로 귀결됩니다. 최대 분산 방향 = 고유벡터, $\lambda$ = 분산 크기.</p>
+<h3 id="pca의-한계">PCA의 한계</h3>
+<ul>
+<li><strong>항상 선형 결과만 도출</strong></li>
+<li>비선형 구조(곡면 등)를 포착할 수 없음</li>
+</ul>
+<h3 id="다층-퍼셉트론에서의-착안">다층 퍼셉트론에서의 착안</h3>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>L1 = W1 * x^T</span></span>
+<span class="line"><span>L2 = W2 * L1 = W2 * W1 * x^T</span></span></code></pre>
+<p>PCA에 비선형성을 추가할 수 있을까? → <strong>오토인코더의 탄생</strong></p>
+<hr>
+<h2 id="오토인코더-학습-pretraining">오토인코더 학습: Pretraining</h2>
+<h3 id="문제-초기값-설정의-중요성">문제: 초기값 설정의 중요성</h3>
+<p>당시 깊은 네트워크 학습 실패의 주요 원인은 <strong>부적절한 가중치 초기화</strong>였습니다.</p>
+<h3 id="제한된-볼츠만-머신-rbm">제한된 볼츠만 머신 (RBM)</h3>
+<p><strong>구조</strong>: Visible-Hidden 양층, 완전연결</p>
+<p><strong>훈련 과정:</strong></p>
+<ol>
+<li>Forward: 입력 → 가중치 → 출력</li>
+<li>Backward: 출력 → 동일 가중치 → 입력 재생성</li>
+<li>원본-재생성 입력 비교 후 가중치 업데이트</li>
+</ol>
+<p>RBM을 층층이 쌓아 Deep Belief Network(DBN)을 구성하고, 이를 통해 가중치를 초기화했습니다.</p>
+<h3 id="현대적-초기화-방법">현대적 초기화 방법</h3>
+<p><strong>Xavier 초기화 (2010):</strong></p>
+<p>$$W \sim N\left(0, \frac{2}{n_{in} + n_{out}}\right)$$</p>
+<ul>
+<li>Sigmoid/Tanh 활성화 함수에 적합</li>
+<li>입출력 뉴런 수 기반 동적 조절</li>
+</ul>
+<p><strong>He 초기화 (2015):</strong></p>
+<p>$$W \sim N\left(0, \frac{2}{(1+a^2) \cdot n_{in}}\right)$$</p>
+<ul>
+<li>ReLU 활성화 함수에 적합</li>
+<li>음수 부분 기울기 반영</li>
+</ul>
+<blockquote>
+<p>Xavier/He 초기화의 등장으로 RBM 기반 사전학습은 거의 사용되지 않게 되었습니다.</p>
+</blockquote>
+<h3 id="스택-오토인코더-stacked-autoencoder">스택 오토인코더 (Stacked Autoencoder)</h3>
+<p>층별로 학습한 뒤 전체 네트워크를 Fine-tuning하는 방식:</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>Input → 2000 → 1000 → 500 → 30 → 500 → 1000 → 2000 → Output</span></span></code></pre>
+<p><strong>자가지도학습 (Self-supervised Learning):</strong></p>
+<ul>
+<li>입력 데이터 자체가 타깃값</li>
+<li>레이블 없는 데이터에서도 효과적 학습</li>
+<li>재구성 과정을 통한 표현 학습</li>
+</ul>
+<hr>
+<h2 id="pca-vs-auto-encoder-비교">PCA vs Auto-Encoder 비교</h2>
+<h3 id="swiss-roll-실험">Swiss Roll 실험</h3>
+<p><img src="/images/posts/autoencoder/swiss-data.png" alt="Swiss Roll 데이터"></p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> sklearn.datasets </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> make_swiss_roll</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">n_samples </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> 3000</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">X, colors </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> make_swiss_roll(n_samples)</span></span></code></pre>
+<p><strong>PCA:</strong></p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> sklearn.decomposition </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> PCA</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">pca </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> PCA(</span><span style="color:#E36209;--shiki-dark:#FFAB70">n_components</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">X_pca </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> pca.fit_transform(X)</span></span></code></pre>
+<p><strong>Auto-Encoder:</strong></p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> keras.layers </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> Input, Dense</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> keras.models </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> Model</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">input_img </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> Input(</span><span style="color:#E36209;--shiki-dark:#FFAB70">shape</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,))</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">encoded </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> Dense(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">activation</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">'relu'</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)(input_img)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">decoded </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> Dense(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">activation</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">'sigmoid'</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)(encoded)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">autoencoder </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> Model(input_img, decoded)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">encoder </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> Model(input_img, encoded)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">autoencoder.compile(</span><span style="color:#E36209;--shiki-dark:#FFAB70">optimizer</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">'adadelta'</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">loss</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">'binary_crossentropy'</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">autoencoder.fit(X, X, </span><span style="color:#E36209;--shiki-dark:#FFAB70">epochs</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">10</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">batch_size</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">256</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">X_auto </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> encoder.predict(X)</span></span></code></pre>
+<p><img src="/images/posts/autoencoder/swiss-result.png" alt="Swiss Roll 결과 비교"></p>
+<blockquote>
+<p><strong>결론:</strong> 오토인코더는 PCA와 달리 선형 평면이 아닌 <strong>곡면(Manifold)을 학습</strong>할 수 있습니다.</p>
+</blockquote>
+<hr>
+<h2 id="실험-결과">실험 결과</h2>
+<h3 id="image-reconstruction">Image Reconstruction</h3>
+<p><img src="/images/posts/autoencoder/reconstruction.png" alt="이미지 재구성 결과"></p>
+<p><strong>A: Strokes Reconstruction</strong></p>
+<ul>
+<li>아키텍처: (28×28)-400-200-100-50-25-6-25-50-100-200-400-(28×28)</li>
+<li>MSE: 오토인코더 <strong>1.44</strong>, PCA 7.64 / 2.45 / 5.90</li>
+</ul>
+<p><strong>B: MNIST Reconstruction</strong></p>
+<ul>
+<li>아키텍처: 784-1000-500-250-30</li>
+<li>MSE: 오토인코더 <strong>3.00</strong>, PCA 8.01 / 13.87</li>
+</ul>
+<p><strong>C: Face Reconstruction</strong></p>
+<ul>
+<li>아키텍처: 625-2000-1000-500-30</li>
+</ul>
+<h3 id="mnist-2d-시각화">MNIST 2D 시각화</h3>
+<p><img src="/images/posts/autoencoder/mnist-viz.png" alt="MNIST 시각화 비교"></p>
+<p><strong>PCA</strong>: 첫 2개 주성분 기반 — 클래스 간 경계가 불분명</p>
+<p><strong>Auto-Encoder</strong>: 784-1000-500-250-2 구조 — 클래스 간 더 명확한 분리</p>
+<ul>
+<li>무작위 초기화: 1.6% 오류</li>
+<li>사전학습 적용: <strong>1.2% 오류</strong></li>
+</ul>
+<h3 id="document-retrieval">Document Retrieval</h3>
+<p><img src="/images/posts/autoencoder/doc-retrieval.png" alt="문서 검색 결과"></p>
+<p>LSA(잠재 의미 분석) 대비 오토인코더(2000-500-250-125-2)가 문서 검색 정확도에서 우수한 결과를 보였습니다.</p>
+<hr>
+<h2 id="pytorch-구현">PyTorch 구현</h2>
+<h3 id="모델-정의">모델 정의</h3>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torch</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torch </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">class</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> Autoencoder</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#6F42C1;--shiki-dark:#B392F0">nn</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.</span><span style="color:#6F42C1;--shiki-dark:#B392F0">Module</span><span style="color:#24292E;--shiki-dark:#E1E4E8">):</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    def</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> __init__</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(self):</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        super</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(Autoencoder, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">).</span><span style="color:#005CC5;--shiki-dark:#79B8FF">__init__</span><span style="color:#24292E;--shiki-dark:#E1E4E8">()</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.encoder </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.Sequential(</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.Linear(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">28</span><span style="color:#D73A49;--shiki-dark:#F97583"> *</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> 28</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">128</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.ReLU(</span><span style="color:#E36209;--shiki-dark:#FFAB70">inplace</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.Linear(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">128</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">64</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.ReLU(</span><span style="color:#E36209;--shiki-dark:#FFAB70">inplace</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.Linear(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">64</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">12</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.ReLU(</span><span style="color:#E36209;--shiki-dark:#FFAB70">inplace</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.Linear(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">12</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        )</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">        self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.decoder </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.Sequential(</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.Linear(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">12</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.ReLU(</span><span style="color:#E36209;--shiki-dark:#FFAB70">inplace</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.Linear(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">12</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">64</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.ReLU(</span><span style="color:#E36209;--shiki-dark:#FFAB70">inplace</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.Linear(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">64</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">128</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.ReLU(</span><span style="color:#E36209;--shiki-dark:#FFAB70">inplace</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.Linear(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">128</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">28</span><span style="color:#D73A49;--shiki-dark:#F97583"> *</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> 28</span><span style="color:#24292E;--shiki-dark:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">            nn.Sigmoid(),</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        )</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    def</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> forward</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(self, x):</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        x </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.encoder(x)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        x </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> self</span><span style="color:#24292E;--shiki-dark:#E1E4E8">.decoder(x)</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">        return</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> x</span></span></code></pre>
+<h3 id="학습">학습</h3>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torch.utils.data </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> DataLoader</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torchvision </span><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> datasets, transforms</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">transform </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> transforms.Compose([transforms.ToTensor()])</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">train_dataset </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> datasets.MNIST(</span></span>
+<span class="line"><span style="color:#E36209;--shiki-dark:#FFAB70">    root</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"./data"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">train</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">transform</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8">transform, </span><span style="color:#E36209;--shiki-dark:#FFAB70">download</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">train_loader </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> DataLoader(train_dataset, </span><span style="color:#E36209;--shiki-dark:#FFAB70">batch_size</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">128</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">shuffle</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">model </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> Autoencoder()</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">criterion </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> nn.MSELoss()</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">optimizer </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> torch.optim.AdamW(model.parameters(), </span><span style="color:#E36209;--shiki-dark:#FFAB70">lr</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1e-3</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">weight_decay</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1e-5</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">for</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> epoch </span><span style="color:#D73A49;--shiki-dark:#F97583">in</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> range</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">20</span><span style="color:#24292E;--shiki-dark:#E1E4E8">):</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">    for</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> img, _ </span><span style="color:#D73A49;--shiki-dark:#F97583">in</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> train_loader:</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        img </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> img.view(img.size(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">), </span><span style="color:#D73A49;--shiki-dark:#F97583">-</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        output </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> model(img)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        loss </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> criterion(output, img)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        optimizer.zero_grad()</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        loss.backward()</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">        optimizer.step()</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">    print</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#D73A49;--shiki-dark:#F97583">f</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"epoch [</span><span style="color:#005CC5;--shiki-dark:#79B8FF">{</span><span style="color:#24292E;--shiki-dark:#E1E4E8">epoch</span><span style="color:#D73A49;--shiki-dark:#F97583">+</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1}</span><span style="color:#032F62;--shiki-dark:#9ECBFF">/20], loss:</span><span style="color:#005CC5;--shiki-dark:#79B8FF">{</span><span style="color:#24292E;--shiki-dark:#E1E4E8">loss.item()</span><span style="color:#D73A49;--shiki-dark:#F97583">:.4f</span><span style="color:#005CC5;--shiki-dark:#79B8FF">}</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span></code></pre>
+<h3 id="결과-시각화">결과 시각화</h3>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> matplotlib.pyplot </span><span style="color:#D73A49;--shiki-dark:#F97583">as</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> plt</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">test_dataset </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> datasets.MNIST(</span></span>
+<span class="line"><span style="color:#E36209;--shiki-dark:#FFAB70">    root</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"./data"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">train</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">False</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">download</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">True</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">transform</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8">transform</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">test_loader </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> DataLoader(test_dataset, </span><span style="color:#E36209;--shiki-dark:#FFAB70">batch_size</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">10</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">shuffle</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">False</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">images, _ </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> next</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">iter</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(test_loader))</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">images_flat </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> images.view(images.size(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">), </span><span style="color:#D73A49;--shiki-dark:#F97583">-</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">outputs </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> model(images_flat)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">fig, axes </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> plt.subplots(</span><span style="color:#E36209;--shiki-dark:#FFAB70">nrows</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">ncols</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">10</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">figsize</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">20</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">4</span><span style="color:#24292E;--shiki-dark:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">for</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> i </span><span style="color:#D73A49;--shiki-dark:#F97583">in</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> range</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">10</span><span style="color:#24292E;--shiki-dark:#E1E4E8">):</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    axes[</span><span style="color:#005CC5;--shiki-dark:#79B8FF">0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, i].imshow(images[i].squeeze(), </span><span style="color:#E36209;--shiki-dark:#FFAB70">cmap</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"gray"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    axes[</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, i].imshow(outputs[i].view(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">28</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">28</span><span style="color:#24292E;--shiki-dark:#E1E4E8">).detach().numpy(), </span><span style="color:#E36209;--shiki-dark:#FFAB70">cmap</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"gray"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    axes[</span><span style="color:#005CC5;--shiki-dark:#79B8FF">0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, i].axis(</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"off"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    axes[</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, i].axis(</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"off"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">axes[</span><span style="color:#005CC5;--shiki-dark:#79B8FF">0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">].set_ylabel(</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"Original"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">fontsize</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">12</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">axes[</span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">].set_ylabel(</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"Reconstructed"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#E36209;--shiki-dark:#FFAB70">fontsize</span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF">12</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">plt.tight_layout()</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">plt.show()</span></span></code></pre>
+<p><img src="/images/posts/autoencoder/mnist-result.png" alt="MNIST 재구성 결과"></p>
+<hr>
+<h2 id="정리">정리</h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>항목</th><th>PCA</th><th>Auto-Encoder</th></tr></thead><tbody><tr><td><strong>변환 방식</strong></td><td>선형</td><td>비선형</td></tr><tr><td><strong>Manifold 학습</strong></td><td>불가</td><td>가능</td></tr><tr><td><strong>학습 방식</strong></td><td>고유값 분해</td><td>역전파</td></tr><tr><td><strong>표현력</strong></td><td>제한적</td><td>유연함</td></tr><tr><td><strong>계산 비용</strong></td><td>낮음</td><td>높음</td></tr><tr><td><strong>재구성 품질</strong></td><td>낮음</td><td>높음</td></tr></tbody></table>
+<p><strong>핵심 결론:</strong></p>
+<ol>
+<li>오토인코더는 PCA보다 <strong>비선형 Manifold 학습</strong> 가능</li>
+<li>다양한 차원 축소 작업에서 <strong>우수한 성능</strong> 입증</li>
+<li>레이블 없는 데이터에서 <strong>효과적인 특징 추출</strong></li>
+<li>이미지, 텍스트 등 다양한 도메인에 <strong>적용 가능</strong></li>
+</ol>
+<hr>
+<p><em>이 글은 Hinton &#x26; Salakhutdinov의 “Reducing the Dimensionality of Data with Neural Networks” (2006) 논문을 리뷰한 글입니다.</em></p>   </div> <script type="module">function a(){const e=document.getElementById("like-btn"),o=document.getElementById("like-count");if(!e||!o)return;const l=e.dataset.slug||"",n=`like:${l}`,c=`like-count:${l}`,i=localStorage.getItem(n)==="1";let t=parseInt(localStorage.getItem(c)||"0",10);function g(){e.classList.toggle("liked",i),o.textContent=String(t)}g(),e.addEventListener("click",()=>{const s=localStorage.getItem(n)==="1";s?(localStorage.removeItem(n),t=Math.max(0,t-1)):(localStorage.setItem(n,"1"),t+=1),localStorage.setItem(c,String(t)),e.classList.toggle("liked",!s),o.textContent=String(t)})}a();document.addEventListener("astro:after-swap",a);</script> <div class="flex flex-col items-center gap-2 my-12" data-astro-cid-rzlfooap> <button id="like-btn" data-slug="autoencoder-paper-review" type="button" aria-label="좋아요" class="group w-16 h-16 rounded-full border-2 border-(--color-border) dark:border-(--color-dark-border) hover:border-(--color-accent) dark:hover:border-(--color-dark-accent) flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95" data-astro-cid-rzlfooap> <svg class="like-icon w-7 h-7 text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) group-hover:text-(--color-accent) dark:group-hover:text-(--color-dark-accent) transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" data-astro-cid-rzlfooap> <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" data-astro-cid-rzlfooap></path> </svg> </button> <span id="like-count" class="text-sm font-medium text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) tabular-nums" data-astro-cid-rzlfooap>0</span> </div>   <nav aria-label="Post navigation" class="mt-16 pt-8 border-t border-(--color-border) dark:border-(--color-dark-border) grid grid-cols-1 md:grid-cols-2 gap-4"><div></div><a href="/blog/resnet-paper-review" class="group p-5 rounded-xl border border-(--color-border) dark:border-(--color-dark-border) hover:border-(--color-accent) dark:hover:border-(--color-dark-accent) transition-all duration-200 text-right"><span class="text-xs font-medium text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) uppercase tracking-wide">다음 글 &rarr;</span><p class="mt-2 text-sm font-semibold group-hover:text-(--color-accent) dark:group-hover:text-(--color-dark-accent) transition-colors line-clamp-1">[논문 리뷰] Deep Residual Learning for Image Recognition (ResNet)</p></a></nav>  </article> <aside class="hidden xl:block sticky top-24 ml-8 w-64 shrink-0 pl-6 border-l border-(--color-border) dark:border-(--color-dark-border)" data-astro-cid-obewoz47><p class="text-sm font-semibold mb-3 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" data-astro-cid-obewoz47>
+목차
+</p><nav aria-label="Table of contents" class="space-y-1.5" data-astro-cid-obewoz47><a href="#개요" data-toc-link data-heading-id="개요" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>개요</a><a href="#오토인코더-구조" data-toc-link data-heading-id="오토인코더-구조" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>오토인코더 구조</a><a href="#등장-배경-왜-차원-축소가-필요한가" data-toc-link data-heading-id="등장-배경-왜-차원-축소가-필요한가" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>등장 배경: 왜 차원 축소가 필요한가</a><a href="#차원의-저주-curse-of-dimensionality" data-toc-link data-heading-id="차원의-저주-curse-of-dimensionality" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>차원의 저주 (Curse of Dimensionality)</a><a href="#manifold-learning" data-toc-link data-heading-id="manifold-learning" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>Manifold Learning</a><a href="#manifold-learning의-목적" data-toc-link data-heading-id="manifold-learning의-목적" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Manifold Learning의 목적</a><a href="#pca-주성분-분석" data-toc-link data-heading-id="pca-주성분-분석" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>PCA (주성분 분석)</a><a href="#개념" data-toc-link data-heading-id="개념" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>개념</a><a href="#수학적-원리" data-toc-link data-heading-id="수학적-원리" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>수학적 원리</a><a href="#pca의-한계" data-toc-link data-heading-id="pca의-한계" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>PCA의 한계</a><a href="#다층-퍼셉트론에서의-착안" data-toc-link data-heading-id="다층-퍼셉트론에서의-착안" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>다층 퍼셉트론에서의 착안</a><a href="#오토인코더-학습-pretraining" data-toc-link data-heading-id="오토인코더-학습-pretraining" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>오토인코더 학습: Pretraining</a><a href="#문제-초기값-설정의-중요성" data-toc-link data-heading-id="문제-초기값-설정의-중요성" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>문제: 초기값 설정의 중요성</a><a href="#제한된-볼츠만-머신-rbm" data-toc-link data-heading-id="제한된-볼츠만-머신-rbm" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>제한된 볼츠만 머신 (RBM)</a><a href="#현대적-초기화-방법" data-toc-link data-heading-id="현대적-초기화-방법" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>현대적 초기화 방법</a><a href="#스택-오토인코더-stacked-autoencoder" data-toc-link data-heading-id="스택-오토인코더-stacked-autoencoder" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>스택 오토인코더 (Stacked Autoencoder)</a><a href="#pca-vs-auto-encoder-비교" data-toc-link data-heading-id="pca-vs-auto-encoder-비교" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>PCA vs Auto-Encoder 비교</a><a href="#swiss-roll-실험" data-toc-link data-heading-id="swiss-roll-실험" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Swiss Roll 실험</a><a href="#실험-결과" data-toc-link data-heading-id="실험-결과" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>실험 결과</a><a href="#image-reconstruction" data-toc-link data-heading-id="image-reconstruction" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Image Reconstruction</a><a href="#mnist-2d-시각화" data-toc-link data-heading-id="mnist-2d-시각화" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>MNIST 2D 시각화</a><a href="#document-retrieval" data-toc-link data-heading-id="document-retrieval" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Document Retrieval</a><a href="#pytorch-구현" data-toc-link data-heading-id="pytorch-구현" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>PyTorch 구현</a><a href="#모델-정의" data-toc-link data-heading-id="모델-정의" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>모델 정의</a><a href="#학습" data-toc-link data-heading-id="학습" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>학습</a><a href="#결과-시각화" data-toc-link data-heading-id="결과-시각화" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>결과 시각화</a><a href="#정리" data-toc-link data-heading-id="정리" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>정리</a></nav></aside><script type="module">function o(){const t=document.querySelectorAll("[data-toc-link]");if(!t.length)return;const n=Array.from(t).map(e=>e.dataset.headingId).map(e=>document.getElementById(e)).filter(Boolean);if(!n.length)return;const a=new IntersectionObserver(e=>{for(const r of e)r.isIntersecting&&(t.forEach(i=>i.classList.remove("active")),document.querySelector(`[data-heading-id="${r.target.id}"]`)?.classList.add("active"))},{rootMargin:"-80px 0px -60% 0px",threshold:0});n.forEach(e=>a.observe(e))}o();document.addEventListener("astro:after-swap",o);</script> </div> <!-- Comments --> <div class="max-w-3xl w-full"> <section class="mt-16 pt-8 border-t border-(--color-border) dark:border-(--color-dark-border)" data-astro-cid-an2nl7ar> <h2 class="text-xl font-bold mb-6 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" data-astro-cid-an2nl7ar>댓글</h2> <div id="giscus-container" class="giscus-wrapper" data-astro-cid-an2nl7ar></div> </section>  <script type="module">function s(){const e=document.getElementById("giscus-container");if(!e)return;e.innerHTML="";const a=document.documentElement.classList.contains("dark")?"dark_dimmed":"light",t=document.createElement("script");t.src="https://giscus.app/client.js",t.setAttribute("data-repo","Sbeom12/Sbeom12.github.io"),t.setAttribute("data-repo-id","R_kgDOR0fLQQ"),t.setAttribute("data-category","General"),t.setAttribute("data-category-id","DIC_kwDOR0fLQc4C5vU9"),t.setAttribute("data-mapping","pathname"),t.setAttribute("data-strict","0"),t.setAttribute("data-reactions-enabled","0"),t.setAttribute("data-emit-metadata","0"),t.setAttribute("data-input-position","top"),t.setAttribute("data-theme",a),t.setAttribute("data-lang","ko"),t.setAttribute("data-loading","lazy"),t.crossOrigin="anonymous",t.async=!0,e.appendChild(t)}function i(){const e=document.documentElement.classList.contains("dark")?"dark_dimmed":"light";document.querySelector("iframe.giscus-frame")?.contentWindow?.postMessage({giscus:{setConfig:{theme:e}}},"https://giscus.app")}const n=new MutationObserver(()=>i());n.observe(document.documentElement,{attributes:!0,attributeFilter:["class"]});s();document.addEventListener("astro:after-swap",s);</script> </div> </div>  </main> <footer class="border-t border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-secondary)/50 dark:bg-(--color-dark-bg-secondary)/50"> <div class="max-w-5xl mx-auto px-6 py-10"> <div class="flex flex-col md:flex-row items-center justify-between gap-6"> <div class="flex flex-col items-center md:items-start gap-1"> <p class="text-sm font-medium text-(--color-text-primary) dark:text-(--color-dark-text-primary)">
+Blog
+</p> <p class="text-xs text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)">
+&copy; 2026 Sbeom12. All rights reserved.
+</p> </div> <div class="flex items-center gap-6"> <a href="https://github.com/Sbeom12" target="_blank" rel="noopener noreferrer" class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+GitHub
+</a> <span class="w-1 h-1 rounded-full bg-(--color-border) dark:bg-(--color-dark-border)"></span> <a href="/rss.xml" class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+RSS
+</a> </div> </div> </div> </footer> </body></html>
