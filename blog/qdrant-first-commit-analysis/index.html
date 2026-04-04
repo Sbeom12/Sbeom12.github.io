@@ -1,0 +1,278 @@
+<!DOCTYPE html><html lang="ko" class="dark"> <head><!-- Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=G-K5QFVRWN89"></script><script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-K5QFVRWN89');
+  </script><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="google-site-verification" content="rIn3fOE7cFCrJFnwHSepci620PG65JKXRTlJpGBqk_4"><meta name="generator" content="Astro v6.1.1"><title>Qdrant 첫 커밋 분석 — 벡터 DB는 어떻게 시작되었는가</title><meta name="description" content="5,600+ 커밋, 1,100+ Rust 파일로 성장한 Qdrant의 첫 커밋을 분석합니다. 17개 파일에서 시작된 벡터 데이터베이스의 초기 설계 철학을 읽어봅니다."><link rel="canonical" href="https://sbeom12.github.io/blog/qdrant-first-commit-analysis/"><!-- Open Graph --><meta property="og:type" content="website"><meta property="og:url" content="https://sbeom12.github.io/blog/qdrant-first-commit-analysis/"><meta property="og:title" content="Qdrant 첫 커밋 분석 — 벡터 DB는 어떻게 시작되었는가"><meta property="og:description" content="5,600+ 커밋, 1,100+ Rust 파일로 성장한 Qdrant의 첫 커밋을 분석합니다. 17개 파일에서 시작된 벡터 데이터베이스의 초기 설계 철학을 읽어봅니다."><!-- Twitter --><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Qdrant 첫 커밋 분석 — 벡터 DB는 어떻게 시작되었는가"><meta name="twitter:description" content="5,600+ 커밋, 1,100+ Rust 파일로 성장한 Qdrant의 첫 커밋을 분석합니다. 17개 파일에서 시작된 벡터 데이터베이스의 초기 설계 철학을 읽어봅니다."><meta http-equiv="X-Content-Type-Options" content="nosniff"><meta http-equiv="X-Frame-Options" content="DENY"><meta name="referrer" content="strict-origin-when-cross-origin"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5YADFD64kaKbrO/hBSKOoP/HPbJcYFHnK3FRRTO+GhtcN7ze/YwA" crossorigin="anonymous"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="sitemap" href="/sitemap-index.xml"><link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml"><!-- Prevent flash of wrong theme --><script>
+    (function() {
+      const theme = localStorage.getItem('theme') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+    })();
+  </script><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.j56hQv-j.js"></script><script>
+    function addCopyButtons() {
+      document.querySelectorAll('.prose-blog pre').forEach(function(pre) {
+        if (pre.querySelector('.code-copy-btn')) return;
+        var btn = document.createElement('button');
+        btn.className = 'code-copy-btn';
+        btn.textContent = 'Copy';
+        btn.addEventListener('click', function() {
+          var code = pre.querySelector('code');
+          if (code) {
+            navigator.clipboard.writeText(code.textContent || '');
+            btn.textContent = 'Copied!';
+            setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+          }
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(btn);
+      });
+    }
+    document.addEventListener('DOMContentLoaded', addCopyButtons);
+    document.addEventListener('astro:after-swap', addCopyButtons);
+  </script><style>.toc-link[data-astro-cid-obewoz47].active{color:var(--color-accent);font-weight:600}.dark .toc-link[data-astro-cid-obewoz47].active{color:var(--color-dark-accent)}.giscus-wrapper[data-astro-cid-an2nl7ar]{min-height:150px}.giscus-wrapper[data-astro-cid-an2nl7ar] .giscus,.giscus-wrapper[data-astro-cid-an2nl7ar] .giscus-frame{width:100%}
+</style>
+<link rel="stylesheet" href="/_astro/BaseLayout.B7i6Itpv.css"></head> <body class="min-h-screen flex flex-col bg-(--color-bg-primary) dark:bg-(--color-dark-bg-primary) text-(--color-text-primary) dark:text-(--color-dark-text-primary) transition-colors"> <nav class="sticky top-0 z-50 border-b border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-primary)/80 dark:bg-(--color-dark-bg-primary)/80 backdrop-blur-md"> <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between"> <a href="/" class="text-xl font-bold text-(--color-text-primary) dark:text-(--color-dark-text-primary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+Blog
+</a> <!-- Desktop --> <div class="hidden md:flex items-center gap-8"> <a href="/blog" aria-current="page" class="text-sm font-medium transition-colors text-(--color-accent) dark:text-(--color-dark-accent)"> Blog </a><a href="/series" class="text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-text-primary) dark:hover:text-(--color-dark-text-primary)"> Series </a><a href="/about" class="text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-text-primary) dark:hover:text-(--color-dark-text-primary)"> About </a> <button type="button" aria-label="Toggle dark mode" class="theme-toggle p-2 rounded-lg hover:bg-(--color-border) dark:hover:bg-(--color-dark-border) transition-colors"> <svg class="icon-sun hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <circle cx="12" cy="12" r="5"></circle> <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path> </svg> <svg class="icon-moon hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path> </svg> </button> <script type="module">function n(){const c=document.querySelectorAll(".theme-toggle");function r(){const e=localStorage.getItem("theme");return e||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}function o(e){document.documentElement.classList.toggle("dark",e==="dark"),document.querySelectorAll(".icon-sun").forEach(t=>t.classList.toggle("hidden",e==="dark")),document.querySelectorAll(".icon-moon").forEach(t=>t.classList.toggle("hidden",e!=="dark"))}o(r()),c.forEach(e=>{e.addEventListener("click",()=>{const t=document.documentElement.classList.contains("dark")?"light":"dark";localStorage.setItem("theme",t),o(t)})})}n();document.addEventListener("astro:after-swap",n);</script> </div> <!-- Mobile hamburger --> <div class="flex items-center gap-4 md:hidden"> <button type="button" aria-label="Toggle dark mode" class="theme-toggle p-2 rounded-lg hover:bg-(--color-border) dark:hover:bg-(--color-dark-border) transition-colors"> <svg class="icon-sun hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <circle cx="12" cy="12" r="5"></circle> <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path> </svg> <svg class="icon-moon hidden w-5 h-5 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path> </svg> </button>  <button id="mobile-menu-btn" type="button" aria-label="Open menu" class="p-2"> <svg class="w-6 h-6 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path d="M4 6h16M4 12h16M4 18h16"></path> </svg> </button> </div> </div> <!-- Mobile menu --> <div id="mobile-menu" class="hidden md:hidden border-t border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-primary) dark:bg-(--color-dark-bg-primary)"> <div class="px-6 py-4 flex flex-col gap-4"> <a href="/blog" aria-current="page" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-accent) dark:text-(--color-dark-accent)"> Blog </a><a href="/series" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)"> Series </a><a href="/about" class="mobile-nav-link text-sm font-medium transition-colors text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)"> About </a> </div> </div> </nav> <script type="module">function n(){const t=document.getElementById("mobile-menu-btn"),e=document.getElementById("mobile-menu");t?.addEventListener("click",()=>e?.classList.toggle("hidden")),document.querySelectorAll(".mobile-nav-link").forEach(d=>{d.addEventListener("click",()=>e?.classList.add("hidden"))})}n();document.addEventListener("astro:after-swap",n);</script> <main class="flex-1">  <div class="max-w-3xl xl:max-w-5xl mx-auto px-6 py-16"> <!-- Header --> <header class="max-w-3xl mb-8"> <div class="flex items-center gap-3 text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) mb-4"> <time class="tabular-nums">2026년 4월 4일</time> <span class="w-1 h-1 rounded-full bg-(--color-border) dark:bg-(--color-dark-border)"></span> <span>13분 읽기</span> </div> <h1 class="text-3xl md:text-4xl font-bold leading-tight">Qdrant 첫 커밋 분석 — 벡터 DB는 어떻게 시작되었는가</h1> <p class="mt-3 text-lg text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) leading-relaxed"> 5,600+ 커밋, 1,100+ Rust 파일로 성장한 Qdrant의 첫 커밋을 분석합니다. 17개 파일에서 시작된 벡터 데이터베이스의 초기 설계 철학을 읽어봅니다. </p> <div class="mt-4 flex flex-wrap gap-1.5"> <a href="/blog?tag=오픈소스" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> 오픈소스 </a><a href="/blog?tag=Qdrant" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> Qdrant </a><a href="/blog?tag=벡터DB" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> 벡터DB </a><a href="/blog?tag=Rust" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> Rust </a><a href="/blog?tag=아키텍처" class="text-xs px-2.5 py-1 rounded-md bg-(--color-bg-secondary) dark:bg-(--color-dark-bg-secondary) text-(--color-accent) dark:text-(--color-dark-accent) font-medium hover:bg-(--color-accent)/10 dark:hover:bg-(--color-dark-accent)/10 transition-colors"> 아키텍처 </a> </div> </header> <hr class="border-(--color-border) dark:border-(--color-dark-border) mb-10"> <!-- Content + TOC --> <div class="flex"> <article class="min-w-0 flex-1 max-w-3xl"> <div class="prose prose-lg prose-blog max-w-none"> <h2 id="qdrant란">Qdrant란?</h2>
+<p><a href="https://qdrant.tech">Qdrant</a>는 Rust로 작성된 오픈소스 벡터 데이터베이스입니다. RAG 시스템에서 임베딩 벡터를 저장하고 유사도 검색을 수행하는 핵심 인프라로, Pinecone, Weaviate와 함께 가장 많이 사용되는 벡터 DB 중 하나입니다.</p>
+<p>현재 Qdrant는 <strong>v1.17.1</strong>, <strong>5,628개 커밋</strong>, <strong>1,114개 Rust 파일</strong>로 구성된 대규모 프로젝트입니다.</p>
+<p>그런데 이 프로젝트의 <strong>첫 커밋</strong>은 어떤 모습이었을까요?</p>
+<hr>
+<h2 id="첫-커밋-메타-정보">첫 커밋 메타 정보</h2>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>커밋 해시: e4452500a0228cccbf8dd37e3c9e8f81e8faaf33</span></span>
+<span class="line"><span>날짜:      2020-05-30 23:35:38 +0200</span></span>
+<span class="line"><span>작성자:    Andrey Vasnetsov</span></span>
+<span class="line"><span>메시지:    init</span></span></code></pre>
+<p>2020년 5월 30일 토요일 밤 11시 35분, Andrey Vasnetsov이 “init”이라는 메시지와 함께 Qdrant의 첫 코드를 커밋했습니다. 주말 밤에 시작된 사이드 프로젝트가 현재 수백만 달러 규모의 벡터 DB 회사가 된 것입니다.</p>
+<hr>
+<h2 id="첫-커밋의-파일-구조">첫 커밋의 파일 구조</h2>
+<p>단 <strong>17개 파일</strong>로 시작합니다:</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>qdrant/</span></span>
+<span class="line"><span>├── Cargo.toml              # Rust 패키지 정의</span></span>
+<span class="line"><span>├── Cargo.lock</span></span>
+<span class="line"><span>├── config/</span></span>
+<span class="line"><span>│   ├── config.yaml         # 기본 설정</span></span>
+<span class="line"><span>│   └── development.yaml</span></span>
+<span class="line"><span>├── docs/</span></span>
+<span class="line"><span>│   ├── arch_1.svg          # 아키텍처 다이어그램</span></span>
+<span class="line"><span>│   └── wal.md              # WAL 설계 문서</span></span>
+<span class="line"><span>└── src/</span></span>
+<span class="line"><span>    ├── main.rs             # 진입점</span></span>
+<span class="line"><span>    ├── settings.rs         # 설정 로드</span></span>
+<span class="line"><span>    ├── test_wal.rs         # WAL 테스트</span></span>
+<span class="line"><span>    ├── common/</span></span>
+<span class="line"><span>    │   ├── mod.rs</span></span>
+<span class="line"><span>    │   ├── types.rs        # 핵심 타입 정의</span></span>
+<span class="line"><span>    │   └── index_def.rs    # 인덱스 정의</span></span>
+<span class="line"><span>    └── operations/</span></span>
+<span class="line"><span>        ├── mod.rs</span></span>
+<span class="line"><span>        ├── common.rs       # 공통 구조체</span></span>
+<span class="line"><span>        ├── point_ops.rs    # 포인트 연산</span></span>
+<span class="line"><span>        ├── tag_ops.rs      # 태그 연산</span></span>
+<span class="line"><span>        └── collection_ops.rs # 컬렉션 연산</span></span></code></pre>
+<blockquote>
+<p>현재: <strong>1,114개 Rust 파일</strong>. 첫 커밋에서 약 <strong>65배</strong> 성장했습니다.</p>
+</blockquote>
+<hr>
+<h2 id="핵심-분석-1-타입-정의--3줄이-모든-것의-시작">핵심 분석 1: 타입 정의 — 3줄이 모든 것의 시작</h2>
+<p><code>src/common/types.rs</code>는 단 3줄입니다:</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="rust"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">pub</span><span style="color:#D73A49;--shiki-dark:#F97583"> type</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> PointIdType</span><span style="color:#D73A49;--shiki-dark:#F97583"> =</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> u64</span><span style="color:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">pub</span><span style="color:#D73A49;--shiki-dark:#F97583"> type</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> TagIdType</span><span style="color:#D73A49;--shiki-dark:#F97583"> =</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> String</span><span style="color:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">pub</span><span style="color:#D73A49;--shiki-dark:#F97583"> type</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> VectorType</span><span style="color:#D73A49;--shiki-dark:#F97583"> =</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> Vec</span><span style="color:#24292E;--shiki-dark:#E1E4E8">&#x3C;</span><span style="color:#6F42C1;--shiki-dark:#B392F0">f64</span><span style="color:#24292E;--shiki-dark:#E1E4E8">>;</span></span></code></pre>
+<p>이 3줄에서 Qdrant의 핵심 데이터 모델이 보입니다:</p>
+<ul>
+<li><strong>PointIdType = u64</strong>: 벡터 포인트의 고유 ID. 정수형으로 시작 (현재는 UUID도 지원)</li>
+<li><strong>TagIdType = String</strong>: 메타데이터 태그 (이후 “payload”로 진화)</li>
+<li><strong>VectorType = Vec&#x3C;f64></strong>: 벡터는 <code>f64</code> 배열. 단순하지만 정확한 표현</li>
+</ul>
+<blockquote>
+<p><strong>설계 관점:</strong> 타입 별칭(type alias)을 사용한 것이 눈에 띕니다. 나중에 <code>u64</code> → <code>UUID</code>로 변경할 때 <code>PointIdType</code>만 수정하면 됩니다. 첫 커밋부터 <strong>변경에 열린 설계</strong>를 하고 있습니다.</p>
+</blockquote>
+<hr>
+<h2 id="핵심-분석-2-인덱스-설계--처음부터-hnsw를-고려">핵심 분석 2: 인덱스 설계 — 처음부터 HNSW를 고려</h2>
+<p><code>src/common/index_def.rs</code>:</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="rust"><code><span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">#[derive(</span><span style="color:#6F42C1;--shiki-dark:#B392F0">Debug</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#6F42C1;--shiki-dark:#B392F0">Deserialize</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#6F42C1;--shiki-dark:#B392F0">Serialize</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)]</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">pub</span><span style="color:#D73A49;--shiki-dark:#F97583"> enum</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> Distance</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#6F42C1;--shiki-dark:#B392F0">  Cosine</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#6F42C1;--shiki-dark:#B392F0">  Euclid</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">#[derive(</span><span style="color:#6F42C1;--shiki-dark:#B392F0">Debug</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#6F42C1;--shiki-dark:#B392F0">Deserialize</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#6F42C1;--shiki-dark:#B392F0">Serialize</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)]</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">pub</span><span style="color:#D73A49;--shiki-dark:#F97583"> struct</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> PlainIndex</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">  params</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> BaseIndexParams</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">#[derive(</span><span style="color:#6F42C1;--shiki-dark:#B392F0">Debug</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#6F42C1;--shiki-dark:#B392F0">Deserialize</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#6F42C1;--shiki-dark:#B392F0">Serialize</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)]</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">pub</span><span style="color:#D73A49;--shiki-dark:#F97583"> struct</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> HnswIndex</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">  params</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> BaseIndexParams</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">  m</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> usize</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">  ef_construct</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> usize</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">#[derive(</span><span style="color:#6F42C1;--shiki-dark:#B392F0">Debug</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#6F42C1;--shiki-dark:#B392F0">Deserialize</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#6F42C1;--shiki-dark:#B392F0">Serialize</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)]</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">pub</span><span style="color:#D73A49;--shiki-dark:#F97583"> enum</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> IndexType</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#6F42C1;--shiki-dark:#B392F0">  PlainIndex</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#6F42C1;--shiki-dark:#B392F0">HnswIndex</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span></code></pre>
+<p><strong>주목할 점:</strong></p>
+<ol>
+<li><strong>Distance 메트릭</strong>: Cosine과 Euclid 두 가지를 처음부터 지원. 벡터 검색의 두 핵심 거리 함수를 이미 알고 있었음</li>
+<li><strong>PlainIndex vs HnswIndex</strong>: 단순 인덱스와 HNSW 인덱스를 <strong>enum으로 분리</strong>. 아직 구현은 없지만, 인터페이스를 먼저 설계</li>
+<li><strong>HNSW 파라미터</strong>: <code>m</code>(연결 수)과 <code>ef_construct</code>(빌드 시 탐색 범위) — HNSW 알고리즘의 핵심 파라미터를 정확히 이해하고 있음</li>
+</ol>
+<blockquote>
+<p><strong>핵심 인사이트:</strong> 첫 커밋에 구현은 없지만 <strong>인터페이스 설계가 정확</strong>합니다. “어떻게 만들까”보다 “무엇을 만들까”를 먼저 정의한 것입니다.</p>
+</blockquote>
+<hr>
+<h2 id="핵심-분석-3-operations--crud-설계">핵심 분석 3: Operations — CRUD 설계</h2>
+<h3 id="포인트-연산-point_opsrs">포인트 연산 (<code>point_ops.rs</code>)</h3>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="rust"><code><span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D">/// Insert or update points</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">struct</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> UpsertPoints</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">  collection</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> CollectionUpdateInfo</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">  ids</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> Vec</span><span style="color:#24292E;--shiki-dark:#E1E4E8">&#x3C;</span><span style="color:#6F42C1;--shiki-dark:#B392F0">PointIdType</span><span style="color:#24292E;--shiki-dark:#E1E4E8">>,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">  vectors</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> Vec</span><span style="color:#24292E;--shiki-dark:#E1E4E8">&#x3C;</span><span style="color:#6F42C1;--shiki-dark:#B392F0">VectorType</span><span style="color:#24292E;--shiki-dark:#E1E4E8">></span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D">/// Delete point if exists</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">struct</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> DeletePoints</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">  collection</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> CollectionUpdateInfo</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">  ids</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> Vec</span><span style="color:#24292E;--shiki-dark:#E1E4E8">&#x3C;</span><span style="color:#6F42C1;--shiki-dark:#B392F0">PointIdType</span><span style="color:#24292E;--shiki-dark:#E1E4E8">>,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span></code></pre>
+<p><strong>Upsert</strong> (Insert or Update)를 처음부터 채택한 것이 인상적입니다. “존재하면 업데이트, 없으면 삽입” — 벡터 DB에서 가장 흔한 패턴을 이미 파악하고 있었습니다.</p>
+<h3 id="컬렉션-연산-collection_opsrs">컬렉션 연산 (<code>collection_ops.rs</code>)</h3>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="rust"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">struct</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> CreateCollection</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    collection_name</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> String</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    dim</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> usize</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    index</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> Option</span><span style="color:#24292E;--shiki-dark:#E1E4E8">&#x3C;</span><span style="color:#6F42C1;--shiki-dark:#B392F0">IndexType</span><span style="color:#24292E;--shiki-dark:#E1E4E8">>,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span></code></pre>
+<p>컬렉션 생성 시 **차원(dim)**과 <strong>인덱스 타입</strong>을 받습니다. <code>index: Option&#x3C;IndexType></code> — 인덱스 없이도 컬렉션을 만들 수 있게 한 것은, 데이터를 먼저 넣고 나중에 인덱스를 빌드하는 패턴을 고려한 것입니다.</p>
+<h3 id="alias-시스템">Alias 시스템</h3>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="rust"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">struct</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> CreateAlias</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    collection_name</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> String</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    alias_name</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> String</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">struct</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> RenameAlias</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    old_alias_name</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> String</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    new_alias_name</span><span style="color:#D73A49;--shiki-dark:#F97583">:</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> String</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span></code></pre>
+<p>첫 커밋부터 <strong>Alias(별칭)</strong> 시스템을 설계했습니다. 이건 프로덕션 환경에서 무중단 인덱스 교체를 위한 패턴입니다 — Elasticsearch의 alias와 동일한 개념. 첫 커밋에서 프로덕션 운영을 고려한 것이 놀랍습니다.</p>
+<hr>
+<h2 id="핵심-분석-4-wal-write-ahead-log--데이터-안전성">핵심 분석 4: WAL (Write-Ahead Log) — 데이터 안전성</h2>
+<p><code>main.rs</code>는 사실상 WAL 테스트입니다:</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="rust"><code><span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">fn</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> main</span><span style="color:#24292E;--shiki-dark:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#6F42C1;--shiki-dark:#B392F0">    test_wal</span><span style="color:#D73A49;--shiki-dark:#F97583">::</span><span style="color:#6F42C1;--shiki-dark:#B392F0">write_wal</span><span style="color:#24292E;--shiki-dark:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#6F42C1;--shiki-dark:#B392F0">    test_wal</span><span style="color:#D73A49;--shiki-dark:#F97583">::</span><span style="color:#6F42C1;--shiki-dark:#B392F0">read_wal</span><span style="color:#24292E;--shiki-dark:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#6F42C1;--shiki-dark:#B392F0">    test_wal</span><span style="color:#D73A49;--shiki-dark:#F97583">::</span><span style="color:#6F42C1;--shiki-dark:#B392F0">truncate_wal</span><span style="color:#24292E;--shiki-dark:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#6F42C1;--shiki-dark:#B392F0">    test_wal</span><span style="color:#D73A49;--shiki-dark:#F97583">::</span><span style="color:#6F42C1;--shiki-dark:#B392F0">read_wal</span><span style="color:#24292E;--shiki-dark:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span></code></pre>
+<p>첫 커밋에서 <strong>가장 먼저 구현한 것이 WAL</strong>이라는 점이 중요합니다. 벡터 검색 로직도, API 서버도 아닌 <strong>데이터 내구성(durability)</strong> 부터 시작했습니다.</p>
+<p><code>docs/wal.md</code>에 적힌 설계 원칙:</p>
+<blockquote>
+<ul>
+<li>Once data is submitted successfully, it should not be lost</li>
+<li>While indexing, power loss may appear in any moment. Index should not be corrupted</li>
+<li>All submitted data should eventually be available</li>
+</ul>
+</blockquote>
+<p><strong>데이터를 잃지 않는 것</strong>이 첫 번째 원칙입니다. 화려한 기능보다 <strong>신뢰성</strong>을 먼저 구축하겠다는 의지가 보입니다.</p>
+<hr>
+<h2 id="핵심-분석-5-설정-시스템">핵심 분석 5: 설정 시스템</h2>
+<p><code>settings.rs</code>는 계층적 설정 로드를 구현합니다:</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="rust"><code><span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D">// 1. 기본 설정</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">s</span><span style="color:#D73A49;--shiki-dark:#F97583">.</span><span style="color:#6F42C1;--shiki-dark:#B392F0">merge</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#6F42C1;--shiki-dark:#B392F0">File</span><span style="color:#D73A49;--shiki-dark:#F97583">::</span><span style="color:#6F42C1;--shiki-dark:#B392F0">with_name</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"config/config"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">))</span><span style="color:#D73A49;--shiki-dark:#F97583">?</span><span style="color:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D">// 2. 환경별 설정 (development, production 등)</span></span>
+<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583">let</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> env </span><span style="color:#D73A49;--shiki-dark:#F97583">=</span><span style="color:#6F42C1;--shiki-dark:#B392F0"> env</span><span style="color:#D73A49;--shiki-dark:#F97583">::</span><span style="color:#6F42C1;--shiki-dark:#B392F0">var</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"RUN_MODE"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span><span style="color:#D73A49;--shiki-dark:#F97583">.</span><span style="color:#6F42C1;--shiki-dark:#B392F0">unwrap_or</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"development"</span><span style="color:#D73A49;--shiki-dark:#F97583">.</span><span style="color:#6F42C1;--shiki-dark:#B392F0">into</span><span style="color:#24292E;--shiki-dark:#E1E4E8">());</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">s</span><span style="color:#D73A49;--shiki-dark:#F97583">.</span><span style="color:#6F42C1;--shiki-dark:#B392F0">merge</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#6F42C1;--shiki-dark:#B392F0">File</span><span style="color:#D73A49;--shiki-dark:#F97583">::</span><span style="color:#6F42C1;--shiki-dark:#B392F0">with_name</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#D73A49;--shiki-dark:#F97583">&#x26;</span><span style="color:#6F42C1;--shiki-dark:#B392F0">format!</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"config/{}"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, env))</span><span style="color:#D73A49;--shiki-dark:#F97583">.</span><span style="color:#6F42C1;--shiki-dark:#B392F0">required</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">false</span><span style="color:#24292E;--shiki-dark:#E1E4E8">))</span><span style="color:#D73A49;--shiki-dark:#F97583">?</span><span style="color:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D">// 3. 로컬 설정 (git에 커밋하지 않음)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">s</span><span style="color:#D73A49;--shiki-dark:#F97583">.</span><span style="color:#6F42C1;--shiki-dark:#B392F0">merge</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#6F42C1;--shiki-dark:#B392F0">File</span><span style="color:#D73A49;--shiki-dark:#F97583">::</span><span style="color:#6F42C1;--shiki-dark:#B392F0">with_name</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"config/local"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">)</span><span style="color:#D73A49;--shiki-dark:#F97583">.</span><span style="color:#6F42C1;--shiki-dark:#B392F0">required</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#005CC5;--shiki-dark:#79B8FF">false</span><span style="color:#24292E;--shiki-dark:#E1E4E8">))</span><span style="color:#D73A49;--shiki-dark:#F97583">?</span><span style="color:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D;--shiki-dark:#6A737D">// 4. 환경 변수 (QDRANT_ 접두사)</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">s</span><span style="color:#D73A49;--shiki-dark:#F97583">.</span><span style="color:#6F42C1;--shiki-dark:#B392F0">merge</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#6F42C1;--shiki-dark:#B392F0">Environment</span><span style="color:#D73A49;--shiki-dark:#F97583">::</span><span style="color:#6F42C1;--shiki-dark:#B392F0">with_prefix</span><span style="color:#24292E;--shiki-dark:#E1E4E8">(</span><span style="color:#032F62;--shiki-dark:#9ECBFF">"QDRANT"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">))</span><span style="color:#D73A49;--shiki-dark:#F97583">?</span><span style="color:#24292E;--shiki-dark:#E1E4E8">;</span></span></code></pre>
+<p>기본값 → 환경별 → 로컬 → 환경변수 순으로 설정을 오버라이드합니다. 12-Factor App 원칙을 따르는 깔끔한 설정 관리입니다.</p>
+<hr>
+<h2 id="첫-커밋에-없는-것들">첫 커밋에 없는 것들</h2>
+<p>첫 커밋에 <strong>없는 것</strong>도 중요합니다:</p>
+<ul>
+<li><strong>검색 로직</strong>: 벡터 유사도 검색 구현이 없음. 데이터 구조와 WAL만 있음</li>
+<li><strong>API 서버</strong>: HTTP/gRPC 서버 없음 (3번째 커밋에서 actix-web 추가)</li>
+<li><strong>실제 인덱스 구현</strong>: HNSW 인터페이스만 정의, 구현은 없음</li>
+<li><strong>테스트</strong>: 단위 테스트 없음 (main.rs에서 직접 실행)</li>
+</ul>
+<blockquote>
+<p>이건 나쁜 것이 아닙니다. <strong>필수적인 기반(타입, WAL, 설정)을 먼저 잡고, 기능을 점진적으로 추가</strong>하는 전략입니다.</p>
+</blockquote>
+<hr>
+<h2 id="첫-커밋--현재-성장-비교">첫 커밋 → 현재: 성장 비교</h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>항목</th><th>첫 커밋 (2020.05)</th><th>현재 (v1.17.1)</th></tr></thead><tbody><tr><td>파일 수</td><td>17개</td><td>1,114+ Rust 파일</td></tr><tr><td>커밋 수</td><td>1</td><td>5,628</td></tr><tr><td>Distance 메트릭</td><td>2종 (Cosine, Euclid)</td><td>4종+ (Dot, Manhattan 등)</td></tr><tr><td>API</td><td>없음</td><td>REST + gRPC</td></tr><tr><td>인덱스</td><td>인터페이스만</td><td>HNSW, 양자화, 멀티텐넌시</td></tr><tr><td>벡터 타입</td><td><code>Vec&#x3C;f64></code></td><td>Dense, Sparse, Multi-vector</td></tr><tr><td>배포</td><td>없음</td><td>Docker, Kubernetes, Cloud</td></tr></tbody></table>
+<hr>
+<h2 id="배운-점-오픈소스-프로젝트의-시작점에서-얻는-교훈">배운 점: 오픈소스 프로젝트의 시작점에서 얻는 교훈</h2>
+<h3 id="1-인터페이스를-먼저-설계하라">1. 인터페이스를 먼저 설계하라</h3>
+<p>첫 커밋에 구현은 거의 없지만, <strong>데이터 타입과 연산 인터페이스</strong>가 명확합니다. “어떻게 만들까”보다 “무엇이 필요한가”를 먼저 정의했습니다. 이 인터페이스가 이후 5,000+ 커밋의 뼈대가 됩니다.</p>
+<h3 id="2-신뢰성이-기능보다-먼저다">2. 신뢰성이 기능보다 먼저다</h3>
+<p>검색 알고리즘도 없는 첫 커밋에서 WAL을 구현한 것은, <strong>데이터를 잃지 않는 것</strong>이 벡터 DB의 최우선 과제임을 보여줍니다. 화려한 기능은 나중에 추가할 수 있지만, 데이터 안전성은 처음부터 설계해야 합니다.</p>
+<h3 id="3-타입-별칭으로-변경에-대비하라">3. 타입 별칭으로 변경에 대비하라</h3>
+<p><code>pub type PointIdType = u64</code> — 이 한 줄이 나중에 UUID 지원을 추가할 때 변경 범위를 최소화해줍니다. 작은 결정이지만 프로젝트 전체에 영향을 미치는 좋은 습관입니다.</p>
+<h3 id="4-프로덕션을-처음부터-고려하라">4. 프로덕션을 처음부터 고려하라</h3>
+<p>Alias 시스템, 계층적 설정 관리, 환경 변수 지원 — 사이드 프로젝트 수준을 넘어서 <strong>프로덕션 운영</strong>을 처음부터 고려한 설계입니다.</p>
+<h3 id="5-작게-시작하라">5. 작게 시작하라</h3>
+<p>17개 파일, “init” 한 단어의 커밋 메시지. 완벽할 필요 없습니다. 핵심 구조만 잡고 시작하면 됩니다.</p>
+<hr>
+<p><em>이 글은 <a href="https://github.com/qdrant/qdrant">Qdrant</a>의 첫 커밋 <code>e445250</code>을 분석한 글입니다.</em></p>   </div>  <nav aria-label="Post navigation" class="mt-16 pt-8 border-t border-(--color-border) dark:border-(--color-dark-border) grid grid-cols-1 md:grid-cols-2 gap-4"><a href="/blog/boostcamp-nlp-retrospective" class="group p-5 rounded-xl border border-(--color-border) dark:border-(--color-dark-border) hover:border-(--color-accent) dark:hover:border-(--color-dark-accent) transition-all duration-200 text-left"><span class="text-xs font-medium text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) uppercase tracking-wide">&larr; 이전 글</span><p class="mt-2 text-sm font-semibold group-hover:text-(--color-accent) dark:group-hover:text-(--color-dark-accent) transition-colors line-clamp-1">부스트캠프 7기 NLP 트랙 최종 회고</p></a><a href="/blog/boj-1002-turret" class="group p-5 rounded-xl border border-(--color-border) dark:border-(--color-dark-border) hover:border-(--color-accent) dark:hover:border-(--color-dark-accent) transition-all duration-200 text-right"><span class="text-xs font-medium text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) uppercase tracking-wide">다음 글 &rarr;</span><p class="mt-2 text-sm font-semibold group-hover:text-(--color-accent) dark:group-hover:text-(--color-dark-accent) transition-colors line-clamp-1">[BOJ 1002] 터렛 — 두 원의 교점, 엔지니어링적 사고로 풀기</p></a></nav>  </article> <aside class="hidden xl:block sticky top-24 ml-8 w-64 shrink-0 pl-6 border-l border-(--color-border) dark:border-(--color-dark-border)" data-astro-cid-obewoz47><p class="text-sm font-semibold mb-3 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" data-astro-cid-obewoz47>
+목차
+</p><nav aria-label="Table of contents" class="space-y-1.5" data-astro-cid-obewoz47><a href="#qdrant란" data-toc-link data-heading-id="qdrant란" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>Qdrant란?</a><a href="#첫-커밋-메타-정보" data-toc-link data-heading-id="첫-커밋-메타-정보" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>첫 커밋 메타 정보</a><a href="#첫-커밋의-파일-구조" data-toc-link data-heading-id="첫-커밋의-파일-구조" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>첫 커밋의 파일 구조</a><a href="#핵심-분석-1-타입-정의--3줄이-모든-것의-시작" data-toc-link data-heading-id="핵심-분석-1-타입-정의--3줄이-모든-것의-시작" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>핵심 분석 1: 타입 정의 — 3줄이 모든 것의 시작</a><a href="#핵심-분석-2-인덱스-설계--처음부터-hnsw를-고려" data-toc-link data-heading-id="핵심-분석-2-인덱스-설계--처음부터-hnsw를-고려" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>핵심 분석 2: 인덱스 설계 — 처음부터 HNSW를 고려</a><a href="#핵심-분석-3-operations--crud-설계" data-toc-link data-heading-id="핵심-분석-3-operations--crud-설계" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>핵심 분석 3: Operations — CRUD 설계</a><a href="#포인트-연산-point_opsrs" data-toc-link data-heading-id="포인트-연산-point_opsrs" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>포인트 연산 (point_ops.rs)</a><a href="#컬렉션-연산-collection_opsrs" data-toc-link data-heading-id="컬렉션-연산-collection_opsrs" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>컬렉션 연산 (collection_ops.rs)</a><a href="#alias-시스템" data-toc-link data-heading-id="alias-시스템" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>Alias 시스템</a><a href="#핵심-분석-4-wal-write-ahead-log--데이터-안전성" data-toc-link data-heading-id="핵심-분석-4-wal-write-ahead-log--데이터-안전성" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>핵심 분석 4: WAL (Write-Ahead Log) — 데이터 안전성</a><a href="#핵심-분석-5-설정-시스템" data-toc-link data-heading-id="핵심-분석-5-설정-시스템" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>핵심 분석 5: 설정 시스템</a><a href="#첫-커밋에-없는-것들" data-toc-link data-heading-id="첫-커밋에-없는-것들" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>첫 커밋에 없는 것들</a><a href="#첫-커밋--현재-성장-비교" data-toc-link data-heading-id="첫-커밋--현재-성장-비교" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>첫 커밋 → 현재: 성장 비교</a><a href="#배운-점-오픈소스-프로젝트의-시작점에서-얻는-교훈" data-toc-link data-heading-id="배운-점-오픈소스-프로젝트의-시작점에서-얻는-교훈" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors" data-astro-cid-obewoz47>배운 점: 오픈소스 프로젝트의 시작점에서 얻는 교훈</a><a href="#1-인터페이스를-먼저-설계하라" data-toc-link data-heading-id="1-인터페이스를-먼저-설계하라" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>1. 인터페이스를 먼저 설계하라</a><a href="#2-신뢰성이-기능보다-먼저다" data-toc-link data-heading-id="2-신뢰성이-기능보다-먼저다" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>2. 신뢰성이 기능보다 먼저다</a><a href="#3-타입-별칭으로-변경에-대비하라" data-toc-link data-heading-id="3-타입-별칭으로-변경에-대비하라" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>3. 타입 별칭으로 변경에 대비하라</a><a href="#4-프로덕션을-처음부터-고려하라" data-toc-link data-heading-id="4-프로덕션을-처음부터-고려하라" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>4. 프로덕션을 처음부터 고려하라</a><a href="#5-작게-시작하라" data-toc-link data-heading-id="5-작게-시작하라" class="toc-link block text-sm leading-relaxed text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors pl-4" data-astro-cid-obewoz47>5. 작게 시작하라</a></nav></aside><script type="module">function o(){const t=document.querySelectorAll("[data-toc-link]");if(!t.length)return;const n=Array.from(t).map(e=>e.dataset.headingId).map(e=>document.getElementById(e)).filter(Boolean);if(!n.length)return;const a=new IntersectionObserver(e=>{for(const r of e)r.isIntersecting&&(t.forEach(i=>i.classList.remove("active")),document.querySelector(`[data-heading-id="${r.target.id}"]`)?.classList.add("active"))},{rootMargin:"-80px 0px -60% 0px",threshold:0});n.forEach(e=>a.observe(e))}o();document.addEventListener("astro:after-swap",o);</script> </div> <!-- Comments --> <div class="max-w-3xl w-full"> <section class="mt-16 pt-8 border-t border-(--color-border) dark:border-(--color-dark-border)" data-astro-cid-an2nl7ar> <h2 class="text-xl font-bold mb-6 text-(--color-text-primary) dark:text-(--color-dark-text-primary)" data-astro-cid-an2nl7ar>댓글</h2> <div id="giscus-container" class="giscus-wrapper" data-astro-cid-an2nl7ar></div> </section>  <script type="module">function s(){const e=document.getElementById("giscus-container");if(!e)return;e.innerHTML="";const a=document.documentElement.classList.contains("dark")?"dark_dimmed":"light",t=document.createElement("script");t.src="https://giscus.app/client.js",t.setAttribute("data-repo","Sbeom12/Sbeom12.github.io"),t.setAttribute("data-repo-id","R_kgDOR0fLQQ"),t.setAttribute("data-category","General"),t.setAttribute("data-category-id","DIC_kwDOR0fLQc4C5vU9"),t.setAttribute("data-mapping","pathname"),t.setAttribute("data-strict","0"),t.setAttribute("data-reactions-enabled","1"),t.setAttribute("data-emit-metadata","0"),t.setAttribute("data-input-position","top"),t.setAttribute("data-theme",a),t.setAttribute("data-lang","ko"),t.setAttribute("data-loading","lazy"),t.crossOrigin="anonymous",t.async=!0,e.appendChild(t)}function i(){const e=document.documentElement.classList.contains("dark")?"dark_dimmed":"light";document.querySelector("iframe.giscus-frame")?.contentWindow?.postMessage({giscus:{setConfig:{theme:e}}},"https://giscus.app")}const n=new MutationObserver(()=>i());n.observe(document.documentElement,{attributes:!0,attributeFilter:["class"]});s();document.addEventListener("astro:after-swap",s);</script> </div> </div>  </main> <footer class="border-t border-(--color-border) dark:border-(--color-dark-border) bg-(--color-bg-secondary)/50 dark:bg-(--color-dark-bg-secondary)/50"> <div class="max-w-5xl mx-auto px-6 py-10"> <div class="flex flex-col md:flex-row items-center justify-between gap-6"> <div class="flex flex-col items-center md:items-start gap-1"> <p class="text-sm font-medium text-(--color-text-primary) dark:text-(--color-dark-text-primary)">
+Blog
+</p> <p class="text-xs text-(--color-text-secondary) dark:text-(--color-dark-text-secondary)">
+&copy; 2026 Sbeom12. All rights reserved.
+</p> </div> <div class="flex items-center gap-6"> <a href="https://github.com/Sbeom12" target="_blank" rel="noopener noreferrer" class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+GitHub
+</a> <span class="w-1 h-1 rounded-full bg-(--color-border) dark:bg-(--color-dark-border)"></span> <a href="/rss.xml" class="text-sm text-(--color-text-secondary) dark:text-(--color-dark-text-secondary) hover:text-(--color-accent) dark:hover:text-(--color-dark-accent) transition-colors">
+RSS
+</a> </div> </div> </div> </footer> </body></html>
